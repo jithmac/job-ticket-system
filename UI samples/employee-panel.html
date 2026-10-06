@@ -1,0 +1,437 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>New Ticket - Admin Panel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "slate-border": "#CBD5E1",
+          "on-tertiary": "#ffffff",
+          "surface-container-lowest": "#ffffff",
+          "surface-bright": "#f8f9ff",
+          "surface": "#f8f9ff",
+          "on-surface-variant": "#45464d",
+          "on-background": "#0b1c30",
+          "on-tertiary-fixed-variant": "#005323",
+          "on-primary-fixed": "#131b2e",
+          "on-secondary-fixed-variant": "#7f2b00",
+          "primary": "#000000",
+          "tertiary-fixed-dim": "#79db8d",
+          "secondary-fixed": "#ffdbce",
+          "secondary-container": "#fd651e",
+          "on-error": "#ffffff",
+          "surface-tint": "#565e74",
+          "safety-orange-bright": "#F97316",
+          "surface-dim": "#cbdbf5",
+          "inverse-on-surface": "#eaf1ff",
+          "tertiary-fixed": "#95f8a7",
+          "surface-container-high": "#dce9ff",
+          "error": "#ba1a1a",
+          "on-surface": "#0b1c30",
+          "error-container": "#ffdad6",
+          "primary-fixed-dim": "#bec6e0",
+          "machinery-amber": "#D97706",
+          "primary-fixed": "#dae2fd",
+          "safety-orange": "#EA580C",
+          "background": "#f8f9ff",
+          "industrial-green-deep": "#0F5132",
+          "tertiary": "#000000",
+          "primary-container": "#131b2e",
+          "on-primary-container": "#7c839b",
+          "slate-dark": "#0F172A",
+          "on-secondary": "#ffffff",
+          "secondary-fixed-dim": "#ffb599",
+          "tertiary-container": "#00210a",
+          "industrial-green-bright": "#16A34A",
+          "inverse-surface": "#213145",
+          "surface-container-low": "#eff4ff",
+          "outline-variant": "#c6c6cd",
+          "surface-variant": "#d3e4fe",
+          "slate-surface": "#F8FAFC",
+          "on-secondary-container": "#571a00",
+          "secondary": "#a73a00",
+          "inverse-primary": "#bec6e0",
+          "surface-container-highest": "#d3e4fe",
+          "outline": "#76777d",
+          "on-tertiary-fixed": "#00210a",
+          "surface-container": "#e5eeff",
+          "on-error-container": "#93000a",
+          "on-primary-fixed-variant": "#3f465c",
+          "on-primary": "#ffffff",
+          "on-tertiary-container": "#339650",
+          "on-secondary-fixed": "#370e00",
+          "industrial-green": "#15803D"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.125rem",
+          "lg": "0.25rem",
+          "xl": "0.5rem",
+          "full": "0.75rem"
+        },
+        "fontFamily": {
+          "headline-md": ["Space Grotesk", "sans-serif"],
+          "body-md": ["Inter", "sans-serif"],
+          "headline-xl": ["Space Grotesk", "sans-serif"],
+          "headline-lg": ["Space Grotesk", "sans-serif"],
+          "headline-sm": ["Space Grotesk", "sans-serif"],
+          "label-mono": ["JetBrains Mono", "monospace"],
+          "label-mono-sm": ["JetBrains Mono", "monospace"],
+          "body-lg": ["Inter", "sans-serif"],
+          "body-sm": ["Inter", "sans-serif"]
+        }
+      },
+    },
+  }
+</script>
+<style>
+        .custom-focus-ring:focus-within {
+            outline: 2px solid #EA580C;
+            outline-offset: -1px;
+            border-color: #EA580C !important;
+        }
+        .btn-safety {
+            background-color: #EA580C;
+        }
+        .btn-safety:hover {
+            background-color: #C2410C;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col font-body-md">
+<!-- Top Header Bar -->
+<header class="border-b-2 border-b-blue-600 border-t-2 border-t-blue-500 sticky top-0 w-full z-50 flex items-center justify-between px-4 md:px-6 h-16 shadow-xs bg-slate-dark text-white">
+<div class="flex items-center gap-4">
+<!-- Mobile Hamburger -->
+<button class="md:hidden text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Brand / System Title -->
+<div class="flex items-center gap-3">
+<div>
+<div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-sm bg-blue-600"></span>
+<span class="font-headline-md font-bold text-lg leading-tight text-white">Employee Panel</span>
+</div>
+<p class="hidden sm:block text-xs font-label-mono text-slate-border">Manage Job Tickets</p>
+</div>
+</div>
+</div>
+<!-- User Status & Quick Meta -->
+<div class="flex items-center gap-4">
+<!-- Operational Status Pill -->
+<!-- Notifications -->
+<!-- User Profile & Status -->
+<div class="flex items-center gap-3 pl-3 border-l border-slate-border">
+<img alt="Agent Profile" class="w-8 h-8 rounded object-cover border border-slate-border" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbKBKn8x4CteFXLcz1xbp7mHOivm69yeyvLm1Tl41rjp4EqYN--01N-gZluFnLZxjoyiYkvsIY46uHeRri-CKufqBEk1wzvryK0U2CFEVzzvLQJO0RhIXButrvr7vw5Qr1boRkmWAUOTq2tAu3Wf4GnHIsK3vD_q5cEiQbOJndEALQ1yJZS39nvq4hmpfTq0_X4Wjdke1eTf6lJPV8767iQtDasL5axIz7vybNqhdXjo3Pr5BBg5rn">
+<div class="hidden md:flex flex-col text-left">
+<span class="text-xs font-semibold leading-tight text-white">M. Vance</span>
+<span class="text-[10px] font-label-mono text-industrial-green font-medium">FIELD ENGINEER</span>
+</div>
+</div>
+</div>
+</header>
+<div class="flex-1 flex flex-row">
+<!-- Collapsed Icon-Only Navigation Dock (Desktop) -->
+<nav class="border-r border-slate-border fixed left-0 top-16 bottom-0 z-40 w-16 hidden md:flex flex-col justify-between items-center py-4 bg-slate-dark">
+<div class="flex flex-col items-center gap-3 w-full">
+<!-- Overview -->
+<a class="w-10 h-10 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-slate-100 transition-colors group relative" href="#" title="Overview">
+<span class="material-symbols-outlined text-[22px]" data-icon="dashboard">dashboard</span>
+<!-- Tooltip -->
+<span class="absolute left-full ml-3 px-2 py-1 bg-slate-dark text-white text-xs font-label-mono rounded shadow pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">Overview</span>
+</a>
+<!-- Analytics -->
+<a class="w-10 h-10 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-slate-100 transition-colors group relative" href="#" title="Analytics">
+<span class="material-symbols-outlined text-[22px]" data-icon="analytics">analytics</span>
+<span class="absolute left-full ml-3 px-2 py-1 bg-slate-dark text-white text-xs font-label-mono rounded shadow pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">Analytics</span>
+</a>
+<!-- New Ticket (Highlighted Active) -->
+<a class="w-10 h-10 rounded flex items-center justify-center bg-safety-orange text-white shadow-sm relative group" href="#" title="New Ticket">
+<span class="material-symbols-outlined text-[22px]" data-icon="add_box" style="font-variation-settings: &quot;FILL&quot; 1;">add_box</span>
+<span class="absolute left-full ml-3 px-2 py-1 bg-slate-dark text-white text-xs font-label-mono rounded shadow pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">New Ticket</span>
+</a>
+<!-- Settings -->
+<a class="w-10 h-10 rounded flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-slate-100 transition-colors group relative" href="#" title="Settings">
+<span class="material-symbols-outlined text-[22px]" data-icon="settings">settings</span>
+<span class="absolute left-full ml-3 px-2 py-1 bg-slate-dark text-white text-xs font-label-mono rounded shadow pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">Settings</span>
+</a>
+</div>
+<!-- Quick Action Tool -->
+<div class="flex flex-col items-center">
+<button class="w-10 h-10 rounded border border-slate-border text-on-surface-variant hover:border-safety-orange hover:text-safety-orange flex items-center justify-center transition-colors group relative" title="Logout"><span class="material-symbols-outlined text-[20px]">logout</span><span class="absolute left-full ml-3 px-2 py-1 bg-slate-dark text-white text-xs font-label-mono rounded shadow pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap">Logout</span></button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 w-full md:ml-16 min-h-[calc(100vh-4rem)] bg-surface">
+<div class="max-w-[1200px] mx-auto p-4 md:p-8 py-8 md:py-10">
+<!-- Section Header -->
+<div class="mb-6 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-border pb-4 gap-2">
+<div>
+<div class="flex items-center gap-2 mb-1">
+</div>
+<h2 class="font-headline-xl font-bold text-on-background tracking-tight text-2xl">Create New Ticket</h2>
+<p class="text-body-md text-on-surface-variant mt-1">Fill out the details below to log a new job ticket.</p>
+</div>
+<div class="font-label-mono text-xs text-on-surface-variant">
+          FORM-REF: <span class="text-slate-dark font-semibold">TCK-2024-09</span>
+</div>
+</div>
+<!-- Form Container (Rugged Industrial Card) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- Form Wizard Main Card (Step-by-step workflow) -->
+<div class="bg-surface-container-lowest border border-slate-border rounded-lg shadow-sm lg:col-span-8 overflow-hidden">
+<!-- Technical Stepper Bar -->
+<div class="bg-slate-dark text-white p-4 md:px-6 border-b border-slate-border">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded text-[11px] font-label-mono font-bold bg-safety-orange text-white uppercase tracking-wider">Step 2 of 4</span>
+<span class="font-headline-sm font-semibold text-sm text-white">Scope &amp; Subtasks</span>
+</div>
+<div class="flex items-center gap-2 text-xs font-label-mono text-slate-border">
+<span class="">Overall Completion:</span>
+<span class="text-safety-orange font-bold">50%</span>
+</div>
+</div>
+<!-- Stepper Progression Track -->
+<div class="grid grid-cols-4 gap-2">
+<!-- Step 1 (Completed) -->
+<div class="flex flex-col gap-1.5 cursor-pointer group">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded-full bg-industrial-green text-white font-label-mono text-[10px] flex items-center justify-center font-bold">
+<span class="material-symbols-outlined text-[13px]">check</span>
+</span>
+<span class="font-label-mono text-[11px] text-white font-medium truncate hidden sm:inline">1. General Info</span>
+</div>
+<div class="w-full h-1 bg-industrial-green rounded-full"></div>
+</div>
+<!-- Step 2 (Active) -->
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded-full bg-safety-orange text-white font-label-mono text-[10px] flex items-center justify-center font-bold">02</span>
+<span class="font-label-mono text-[11px] text-white font-semibold truncate hidden sm:inline">2. Scope &amp; Tasks</span>
+</div>
+<div class="w-full h-1 bg-safety-orange rounded-full"></div>
+</div>
+<!-- Step 3 (Pending) -->
+<div class="flex flex-col gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded-full bg-slate-700 border border-slate-border text-slate-border font-label-mono text-[10px] flex items-center justify-center font-bold">03</span>
+<span class="font-label-mono text-[11px] text-slate-border truncate hidden sm:inline">3. Personnel</span>
+</div>
+<div class="w-full h-1 bg-slate-700 rounded-full"></div>
+</div>
+<!-- Step 4 (Pending) -->
+<div class="flex flex-col gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded-full bg-slate-700 border border-slate-border text-slate-border font-label-mono text-[10px] flex items-center justify-center font-bold">04</span>
+<span class="font-label-mono text-[11px] text-slate-border truncate hidden sm:inline">4. Review &amp; Dispatch</span>
+</div>
+<div class="w-full h-1 bg-slate-700 rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Step Work-Area Content -->
+<form action="#" class="p-6 md:p-8 flex flex-col gap-6" method="POST">
+<!-- Step Header Intro Banner -->
+<div class="bg-slate-surface border border-slate-border rounded-lg p-4 flex items-start justify-between gap-4">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-safety-orange text-2xl mt-0.5">rule</span>
+<div class="flex flex-col">
+<h3 class="font-headline-sm font-bold text-on-surface text-base">Work Scope &amp; Milestone Breakdown</h3>
+<p class="text-xs text-on-surface-variant mt-0.5">Define technical diagnostic scope, safe work guidelines, and specific procedural milestones for field deployment.</p>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded text-[11px] font-label-mono font-semibold bg-orange-50 text-safety-orange border border-orange-200 shrink-0 hidden sm:inline-block">Phase 2 Active</span>
+</div>
+<!-- Detailed Description & Job Scope -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-mono text-xs uppercase tracking-wider font-semibold text-slate-dark flex items-center justify-between" for="ticket_description">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-safety-orange">description</span>
+            Description &amp; Detailed Scope <span class="text-safety-orange font-bold">*</span>
+</span>
+<span class="text-[11px] font-label-mono text-outline font-normal">TELEMETRY &amp; SCOPE SPEC</span>
+</label>
+<div class="relative custom-focus-ring rounded">
+<textarea class="w-full border border-slate-border rounded p-3 text-body-md bg-slate-surface text-on-surface placeholder:text-outline focus:ring-0 focus:outline-none transition-colors resize-y font-body-md" id="ticket_description" name="ticket_description" placeholder="Provide technical diagnostic summary, telemetry thresholds, equipment IDs, hazard clearances, and physical site requirements..." required="" rows="4">Auxiliary turbine cooling line 4B pressure erratic fluctuation observed between 03:00 - 05:30 EST. Transducer unit relay tripping intermittent safety overrides. Requesting complete sensor recalibration and valve seating test.</textarea>
+</div>
+<p class="text-[11px] text-on-surface-variant font-label-mono flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-xs text-industrial-green">info</span> Included in field telemetry report dispatched to technicians.
+        </p>
+</div>
+<!-- Subtasks & Milestone Tracking Section -->
+<div class="flex flex-col gap-3 pt-2">
+<div class="flex items-center justify-between border-b border-slate-border pb-2.5">
+<div class="flex items-center gap-2">
+<label class="font-label-mono text-xs uppercase tracking-wider font-semibold text-slate-dark flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-safety-orange">checklist</span>
+<span class="">Milestone Breakdown &amp; Subtasks</span>
+</label>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-slate-100 text-slate-dark border border-slate-border">2 Configured</span>
+</div>
+<button class="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-label-mono font-semibold border border-safety-orange text-safety-orange hover:bg-orange-50/50 transition-colors shadow-2xs" type="button">
+<span class="material-symbols-outlined text-sm">add_task</span>
+<span class="">Add Subtask</span>
+</button>
+</div>
+<div class="space-y-3">
+<!-- Subtask 1 -->
+<div class="border border-slate-border rounded-lg bg-slate-surface p-4 flex flex-col gap-3 relative group hover:border-slate-400 transition-colors">
+<div class="flex items-center justify-between gap-3">
+<div class="flex items-center gap-2 flex-1">
+<span class="w-6 h-6 rounded bg-slate-dark text-white font-label-mono text-xs flex items-center justify-center font-bold shrink-0">01</span>
+<input class="w-full bg-white border border-slate-border rounded px-3 py-1.5 text-xs font-semibold text-on-surface focus:outline-none focus:border-safety-orange transition-colors" placeholder="Subtask Title" type="text" value="Zero-Energy Safety Lockout &amp; Pressure Bleed">
+</div>
+<button class="text-on-surface-variant hover:text-error transition-colors p-1" title="Remove subtask" type="button">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+<textarea class="w-full bg-white border border-slate-border rounded p-2.5 text-xs text-on-surface-variant focus:outline-none focus:border-safety-orange transition-colors font-body-md" placeholder="Subtask instructions and safety protocol..." rows="2">Execute standard LOTO on circuit breaker CB-118 and secondary isolation valves. Verify analog zero gauge before removing transducer coupling.</textarea>
+<div class="flex flex-wrap items-center justify-between gap-2 text-[11px] font-label-mono text-on-surface-variant pt-2 border-t border-slate-border/50">
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1 text-slate-dark font-medium"><span class="material-symbols-outlined text-xs text-safety-orange">person</span> Assigned: M. Vance</span>
+<span class="text-slate-border">|</span>
+<span class="flex items-center gap-1 text-on-surface-variant"><span class="material-symbols-outlined text-xs">timer</span> Est: 45 min</span>
+</div>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-machinery-amber border border-amber-300">Phase 1 - Pending</span>
+</div>
+</div>
+<!-- Subtask 2 -->
+<div class="border border-slate-border rounded-lg bg-slate-surface p-4 flex flex-col gap-3 relative group hover:border-slate-400 transition-colors">
+<div class="flex items-center justify-between gap-3">
+<div class="flex items-center gap-2 flex-1">
+<span class="w-6 h-6 rounded bg-slate-dark text-white font-label-mono text-xs flex items-center justify-center font-bold shrink-0">02</span>
+<input class="w-full bg-white border border-slate-border rounded px-3 py-1.5 text-xs font-semibold text-on-surface focus:outline-none focus:border-safety-orange transition-colors" placeholder="Subtask Title" type="text" value="Transducer Recalibration &amp; Telemetry Loop Test">
+</div>
+<button class="text-on-surface-variant hover:text-error transition-colors p-1" title="Remove subtask" type="button">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+<textarea class="w-full bg-white border border-slate-border rounded p-2.5 text-xs text-on-surface-variant focus:outline-none focus:border-safety-orange transition-colors font-body-md" placeholder="Subtask instructions and safety protocol..." rows="2">Bench calibrate digital pressure transducers PT-401 and PT-402 with certified master gauge. Run 5-point curve and transmit telemetry check to central SCADA.</textarea>
+<div class="flex flex-wrap items-center justify-between gap-2 text-[11px] font-label-mono text-on-surface-variant pt-2 border-t border-slate-border/50">
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1 text-slate-dark font-medium"><span class="material-symbols-outlined text-xs text-safety-orange">group</span> Assigned: D. Chen &amp; S. Lin</span>
+<span class="text-slate-border">|</span>
+<span class="flex items-center gap-1 text-on-surface-variant"><span class="material-symbols-outlined text-xs">timer</span> Est: 90 min</span>
+</div>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-on-surface-variant border border-slate-border">Phase 2 - Queued</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Stepper Controls & Navigation Footer -->
+<div class="pt-5 border-t border-slate-border mt-4 flex flex-col-reverse sm:flex-row items-center justify-between gap-3">
+<button class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-border rounded font-label-mono text-xs uppercase tracking-wider font-semibold text-on-surface hover:bg-slate-100 hover:border-slate-400 transition-colors" type="button">
+<span class="material-symbols-outlined text-base">arrow_back</span>
+<span class="">Back to Step 1: General Info</span>
+</button>
+<div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+<button class="px-4 py-2.5 border border-slate-border rounded font-label-mono text-xs uppercase tracking-wider font-semibold text-on-surface-variant hover:bg-slate-100 transition-colors" type="button">
+            Save Draft
+          </button>
+<button class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-2.5 btn-safety rounded font-label-mono text-xs uppercase tracking-wider font-semibold text-white shadow hover:shadow-md transition-all" type="button">
+<span class="">Continue to Step 3: Personnel</span>
+<span class="material-symbols-outlined text-base">arrow_forward</span>
+</button>
+</div>
+</div>
+</form>
+</div>
+<!-- Right Companion Column: Step Blueprint & Recent Tickets -->
+<aside class="flex flex-col gap-5 lg:col-span-4">
+<!-- Step Validation & Blueprint Checklist Card -->
+<div class="bg-surface-container-lowest border border-slate-border rounded-lg shadow-sm overflow-hidden"></div>
+<!-- My Recent Tickets Card -->
+<div class="bg-surface-container-lowest border border-slate-border rounded-lg shadow-sm overflow-hidden">
+<div class="p-3.5 border-b border-slate-border bg-slate-surface flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-base">history</span>
+<h3 class="font-headline-sm font-bold text-on-surface text-xs tracking-tight">My Recent Dispatches</h3>
+</div>
+<span class="text-[10px] font-label-mono text-on-surface-variant">M. Vance</span>
+</div>
+<div class="divide-y divide-slate-border text-xs">
+<div class="p-3 hover:bg-slate-50 transition-colors">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-mono text-xs font-bold text-safety-orange">#TKT-8488</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-amber-50 text-machinery-amber border border-amber-300">In Progress</span>
+</div>
+<p class="font-medium text-on-surface line-clamp-1 text-xs">Hydraulic pressure sensor calibration fault</p>
+</div>
+<div class="p-3 hover:bg-slate-50 transition-colors">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-mono text-xs font-bold text-slate-dark">#TKT-8472</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-green-50 text-industrial-green border border-green-300">Resolved</span>
+</div>
+<p class="font-medium text-on-surface line-clamp-1 text-xs">Conveyor belt speed sync issue - Line 3</p>
+</div>
+<div class="p-3 hover:bg-slate-50 transition-colors">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-mono text-xs font-bold text-safety-orange">#TKT-8450</span>
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-green-50 text-industrial-green border border-green-300">Resolved</span>
+</div>
+<p class="font-medium text-on-surface line-clamp-1 text-xs">HVAC terminal heating sensor failure</p>
+</div>
+<div class="p-3 hover:bg-slate-50 transition-colors"><div class="flex items-center justify-between mb-1"><span class="font-label-mono text-xs font-bold text-slate-dark">#TKT-8439</span><span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-green-50 text-industrial-green border border-green-300">Resolved</span></div><p class="font-medium text-on-surface line-clamp-1 text-xs">Pneumatic cylinder pressure leak - Staging Bay 2</p></div><div class="p-3 hover:bg-slate-50 transition-colors"><div class="flex items-center justify-between mb-1"><span class="font-label-mono text-xs font-bold text-safety-orange">#TKT-8415</span><span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-amber-50 text-machinery-amber border border-amber-300">In Progress</span></div><p class="font-medium text-on-surface line-clamp-1 text-xs">Emergency turbine shut-off valve relay feedback error</p></div></div>
+<div class="p-2.5 bg-slate-surface border-t border-slate-border text-center">
+<a class="font-label-mono text-xs font-semibold text-slate-dark hover:text-safety-orange inline-flex items-center gap-1 transition-colors" href="#">
+<span class="">View all tickets</span>
+<span class="material-symbols-outlined text-xs">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Dispatch Guarantee Banner -->
+<div class="bg-surface-container-lowest border border-slate-border rounded-lg p-3.5 shadow-sm flex items-start gap-2.5">
+<span class="material-symbols-outlined text-industrial-green text-lg mt-0.5">verified_user</span>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-mono text-xs font-semibold text-slate-dark uppercase tracking-wider">SLA Dispatch Policy</span>
+<p class="text-xs text-on-surface-variant leading-relaxed">Tickets logged before 16:00 EST undergo automatic telemetry check &amp; dispatch triage within 30 min.</p>
+</div>
+</div>
+</aside>
+</div>
+</div>
+</main>
+</div>
+<script>
+  // Simple script to handle file drag and drop UI state
+  const dropZone = document.querySelector('.border-dashed');
+  const fileInput = document.getElementById('file_upload');
+
+  if (dropZone && fileInput) {
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+      dropZone.classList.add('border-safety-orange', 'bg-orange-50/50');
+    }
+
+    function unhighlight(e) {
+      dropZone.classList.remove('border-safety-orange', 'bg-orange-50/50');
+    }
+  }
+</script>
+
+
+</body></html>

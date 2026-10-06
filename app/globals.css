@@ -1,26 +1,267 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * The UI samples were built with the Tailwind v3 CDN + the forms plugin.
+ * The forms plugin uses the "class" strategy so only the panels that used it
+ * (employee + admin) opt in via `form-input` / `form-select` / `form-textarea`.
+ */
+@plugin "@tailwindcss/forms" {
+  strategy: "class";
 }
 
+/* ---------------------------------------------------------------------------
+ * Design tokens — copied from the `tailwind.config` blocks in /UI samples
+ * ------------------------------------------------------------------------- */
+@theme {
+  /* Brand + Material 3 surface palette */
+  --color-slate-border: #cbd5e1;
+  --color-on-tertiary: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-bright: #f8f9ff;
+  --color-surface: #f8f9ff;
+  --color-on-surface-variant: #45464d;
+  --color-on-background: #0b1c30;
+  --color-on-tertiary-fixed-variant: #005323;
+  --color-on-primary-fixed: #131b2e;
+  --color-on-secondary-fixed-variant: #7f2b00;
+  --color-primary: #000000;
+  --color-tertiary-fixed-dim: #79db8d;
+  --color-secondary-fixed: #ffdbce;
+  --color-secondary-container: #fd651e;
+  --color-on-error: #ffffff;
+  --color-surface-tint: #565e74;
+  --color-safety-orange-bright: #f97316;
+  --color-surface-dim: #cbdbf5;
+  --color-inverse-on-surface: #eaf1ff;
+  --color-tertiary-fixed: #95f8a7;
+  --color-surface-container-high: #dce9ff;
+  --color-error: #ba1a1a;
+  --color-on-surface: #0b1c30;
+  --color-error-container: #ffdad6;
+  --color-primary-fixed-dim: #bec6e0;
+  --color-machinery-amber: #d97706;
+  --color-primary-fixed: #dae2fd;
+  --color-safety-orange: #ea580c;
+  --color-background: #f8f9ff;
+  --color-industrial-green-deep: #0f5132;
+  --color-tertiary: #000000;
+  --color-primary-container: #131b2e;
+  --color-on-primary-container: #7c839b;
+  --color-slate-dark: #0f172a;
+  --color-on-secondary: #ffffff;
+  --color-secondary-fixed-dim: #ffb599;
+  --color-tertiary-container: #00210a;
+  --color-industrial-green-bright: #16a34a;
+  --color-inverse-surface: #213145;
+  --color-surface-container-low: #eff4ff;
+  --color-outline-variant: #c6c6cd;
+  --color-surface-variant: #d3e4fe;
+  --color-slate-surface: #f8fafc;
+  --color-on-secondary-container: #571a00;
+  --color-secondary: #a73a00;
+  --color-inverse-primary: #bec6e0;
+  --color-surface-container-highest: #d3e4fe;
+  --color-outline: #76777d;
+  --color-on-tertiary-fixed: #00210a;
+  --color-surface-container: #e5eeff;
+  --color-on-error-container: #93000a;
+  --color-on-primary-fixed-variant: #3f465c;
+  --color-on-primary: #ffffff;
+  --color-on-tertiary-container: #339650;
+  --color-on-secondary-fixed: #370e00;
+  --color-industrial-green: #15803d;
+
+  /* Tailwind v3 default palette (hex) so stock colours match the samples exactly */
+  --color-gray-200: #e5e7eb;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-900: #78350f;
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-700: #047857;
+  --color-emerald-800: #065f46;
+  --color-orange-50: #fff7ed;
+  --color-orange-200: #fed7aa;
+  --color-orange-700: #c2410c;
+  --color-green-50: #f0fdf4;
+  --color-green-300: #86efac;
+  --color-red-50: #fef2f2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-700: #b91c1c;
+
+  /* Border radius (note: rounded-full is 0.75rem in the samples) */
+  --radius: 0.125rem;
+  --radius-sm: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
+
+  /* Tailwind v3 shadow scale */
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+
+  /* Spacing tokens (customer + customer care samples) */
+  --spacing-gutter-lg: 2rem;
+  --spacing-space-xl: 2.5rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-margin: 2rem;
+  --spacing-gutter-sm: 1rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-margin-mobile: 1rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+
+  /* Type scale (customer + customer care samples) */
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-md--font-weight: 400;
+  --text-headline-sm: 16px;
+  --text-headline-sm--line-height: 22px;
+  --text-headline-sm--font-weight: 600;
+  --text-label-mono: 12px;
+  --text-label-mono--line-height: 16px;
+  --text-label-mono--letter-spacing: 0.04em;
+  --text-label-mono--font-weight: 500;
+  --text-headline-lg: 28px;
+  --text-headline-lg--line-height: 36px;
+  --text-headline-lg--letter-spacing: -0.02em;
+  --text-headline-lg--font-weight: 700;
+  --text-headline-lg-mobile: 22px;
+  --text-headline-lg-mobile--line-height: 28px;
+  --text-headline-lg-mobile--letter-spacing: -0.01em;
+  --text-headline-lg-mobile--font-weight: 700;
+  --text-label-mono-sm: 10px;
+  --text-label-mono-sm--line-height: 14px;
+  --text-label-mono-sm--letter-spacing: 0.06em;
+  --text-label-mono-sm--font-weight: 600;
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-lg--font-weight: 400;
+  --text-headline-xl: 36px;
+  --text-headline-xl--line-height: 44px;
+  --text-headline-xl--letter-spacing: -0.03em;
+  --text-headline-xl--font-weight: 700;
+  --text-body-sm: 12px;
+  --text-body-sm--line-height: 18px;
+  --text-body-sm--font-weight: 400;
+  --text-headline-md: 20px;
+  --text-headline-md--line-height: 26px;
+  --text-headline-md--letter-spacing: -0.01em;
+  --text-headline-md--font-weight: 600;
+  --text-headline-xl-mobile: 28px;
+  --text-headline-xl-mobile--line-height: 34px;
+  --text-headline-xl-mobile--letter-spacing: -0.02em;
+  --text-headline-xl-mobile--font-weight: 700;
+}
+
+/* Font families — the actual font files are self-hosted by next/font (see app/layout.tsx) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-headline-sm: var(--font-space-grotesk), sans-serif;
+  --font-headline-md: var(--font-space-grotesk), sans-serif;
+  --font-headline-lg: var(--font-space-grotesk), sans-serif;
+  --font-headline-lg-mobile: var(--font-space-grotesk), sans-serif;
+  --font-headline-xl: var(--font-space-grotesk), sans-serif;
+  --font-headline-xl-mobile: var(--font-space-grotesk), sans-serif;
+  --font-body-sm: var(--font-inter), sans-serif;
+  --font-body-md: var(--font-inter), sans-serif;
+  --font-body-lg: var(--font-inter), sans-serif;
+  --font-label-mono: var(--font-jetbrains-mono), monospace;
+  --font-label-mono-sm: var(--font-jetbrains-mono), monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------------------------------------------------------------------------
+ * Tailwind v3 compatibility (the samples rely on v3 preflight defaults)
+ * ------------------------------------------------------------------------- */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-slate-400);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html {
+    scroll-padding-top: 5rem;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---------------------------------------------------------------------------
+ * Shared component styles lifted from the samples' <style> blocks
+ * ------------------------------------------------------------------------- */
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0;
+  user-select: none;
+}
+.material-symbols-outlined.fill {
+  font-variation-settings: "FILL" 1;
+}
+
+.custom-focus-ring:focus-within {
+  outline: 2px solid #ea580c;
+  outline-offset: -1px;
+  border-color: #ea580c !important;
+}
+.btn-safety {
+  background-color: #ea580c;
+}
+.btn-safety:hover {
+  background-color: #c2410c;
+}
+
+/* Customer + customer-care samples hide the document scrollbar */
+html:has(.portal-shell) body {
+  overscroll-behavior: none;
+}
+html:has(.portal-shell) ::-webkit-scrollbar {
+  display: none;
+}
+
+/* Printable bill */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}
+
+/* Filled icon for the active item in icon docks */
+.dock-link[aria-current="page"] .material-symbols-outlined {
+  font-variation-settings: "FILL" 1;
 }
