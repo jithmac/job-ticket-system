@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { currentEmployeeId, getClients, getEmployees } from "@/lib/db-data";
+import { getClients, getEmployees } from "@/lib/db-data";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import { formatDate, getClient, getEmployee, ticketsForEmployee } from "@/lib/tickets";
 import { Card, CardHeader, PageHeader, PriorityBadge, StatusBadge } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Previous Tickets" };
 
 export default async function HistoryPage() {
+  const session = await requireRole([UserRole.EMPLOYEE]);
   const [clients, employees] = await Promise.all([getClients(), getEmployees()]);
   const clientsById = new Map(clients.map((client) => [client.id, client]));
   const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
-  const previous = (await ticketsForEmployee(currentEmployeeId))
+  const previous = (await ticketsForEmployee(session.id))
     .filter((t) => t.status === "completed")
     .sort((a, b) => b.endDate.localeCompare(a.endDate));
 

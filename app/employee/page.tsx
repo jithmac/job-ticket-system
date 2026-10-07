@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link"; // use to navigate
 import { Icon } from "@/components/icon";
-import { currentEmployeeId, getClients, getEmployee } from "@/lib/db-data";
+import { getClients, getEmployee } from "@/lib/db-data";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import {
   daysRemaining,
   formatDate,
@@ -17,7 +19,8 @@ import { Card, CardHeader, PageHeader, PriorityBadge, ProgressBar, SlaPolicyBann
 export const metadata: Metadata = { title: "Overview" };
 
 export default async function EmployeeOverviewPage() {
-  const me = (await getEmployee(currentEmployeeId))!;
+  const session = await requireRole([UserRole.EMPLOYEE]);
+  const me = (await getEmployee(session.id))!;
   const mine = await ticketsForEmployee(me.id);
   const clients = await getClients();
   const clientsById = new Map(clients.map((client) => [client.id, client]));

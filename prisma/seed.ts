@@ -25,8 +25,18 @@ function requiredAdminPassword() {
   return password;
 }
 
+function requiredSeedPassword(name: string) {
+  const password = process.env[name];
+  if (!password || !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}/.test(password)) {
+    throw new Error(`Set ${name} to 12+ characters with upper, lower, and numeric characters before running the seed.`);
+  }
+  return password;
+}
+
 async function main() {
   const adminPassword = requiredAdminPassword();
+  const employeePassword = requiredSeedPassword("EMPLOYEE_INITIAL_PASSWORD");
+  const carePassword = requiredSeedPassword("CARE_INITIAL_PASSWORD");
 
   await db.user.upsert({
     where: { id: ADMIN_ID },
@@ -59,6 +69,7 @@ async function main() {
         title: employee.title,
         department: employee.department,
         role: UserRole.EMPLOYEE,
+        passwordHash: hashPassword(employeePassword),
       },
       create: {
         id: employee.id,
@@ -68,19 +79,21 @@ async function main() {
         title: employee.title,
         department: employee.department,
         role: UserRole.EMPLOYEE,
+        passwordHash: hashPassword(employeePassword),
       },
     });
   }
 
   await db.user.upsert({
     where: { id: "CC-441" },
-    update: { name: "Nadia Perera", email: "nadia.perera@apexindustrial.com", title: "Customer Care Dispatcher", role: UserRole.CARE },
+    update: { name: "Nadia Perera", email: "nadia.perera@apexindustrial.com", title: "Customer Care Dispatcher", role: UserRole.CARE, passwordHash: hashPassword(carePassword) },
     create: {
       id: "CC-441",
       name: "Nadia Perera",
       email: "nadia.perera@apexindustrial.com",
       title: "Customer Care Dispatcher",
       role: UserRole.CARE,
+      passwordHash: hashPassword(carePassword),
     },
   });
 

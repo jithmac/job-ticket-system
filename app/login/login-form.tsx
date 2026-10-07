@@ -55,7 +55,7 @@ export function LoginForm() {
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
 
-    if (!email || !email.includes("@")) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Enter a valid work email address.");
       return;
     }
@@ -64,9 +64,21 @@ export function LoginForm() {
       return;
     }
 
-    // Authentication is intentionally not persisted until the database is connected.
     setIsSubmitting(true);
-    router.replace(workspace.destination);
+    void fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password, workspace: role }),
+    })
+      .then(async (response) => {
+        const result = (await response.json()) as { destination?: string; error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Unable to sign in.");
+        router.replace(result.destination ?? workspace.destination);
+      })
+      .catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : "Unable to sign in.");
+        setIsSubmitting(false);
+      });
   }
 
   return (

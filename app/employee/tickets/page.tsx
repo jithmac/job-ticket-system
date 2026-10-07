@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { currentEmployeeId, getClients, getEmployees } from "@/lib/db-data";
+import { getClients, getEmployees } from "@/lib/db-data";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import {
   formatDate,
   isOverdue,
@@ -16,8 +18,9 @@ import { PageHeader } from "../_components/ui";
 export const metadata: Metadata = { title: "My Tickets" };
 
 export default async function MyTicketsPage() {
+  const session = await requireRole([UserRole.EMPLOYEE]);
   // Rows are computed on the server; only plain data crosses into the client table.
-  const tickets = await ticketsForEmployee(currentEmployeeId);
+  const tickets = await ticketsForEmployee(session.id);
   const [clients, employees] = await Promise.all([getClients(), getEmployees()]);
   const clientsById = new Map(clients.map((client) => [client.id, client]));
   const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
@@ -29,8 +32,8 @@ export default async function MyTicketsPage() {
       title: t.title,
       client: clientsById.get(t.clientId)?.name ?? "—",
       holder: employeesById.get(t.ownerId)?.name ?? "—",
-      isHolder: t.ownerId === currentEmployeeId,
-      role: t.ownerId === currentEmployeeId ? "Holder" : t.createdById === currentEmployeeId ? "Creator" : "Participant",
+      isHolder: t.ownerId === session.id,
+      role: t.ownerId === session.id ? "Holder" : t.createdById === session.id ? "Creator" : "Participant",
       priority: t.priority,
       status: t.status,
       progress: ticketProgress(t),

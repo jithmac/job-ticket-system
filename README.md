@@ -44,7 +44,16 @@ each job.
 1. Copy `.env.example` to `.env` and set `DATABASE_URL`.
 2. Run `npm run db:generate`.
 3. Create the database tables with `npm run db:migrate -- --name init`.
-4. Load the existing demo records with `npm run db:seed`.
+4. Set unique values for `AUTH_SECRET`, `ADMIN_INITIAL_PASSWORD`,
+   `EMPLOYEE_INITIAL_PASSWORD`, and `CARE_INITIAL_PASSWORD`. Passwords must be
+   at least 12 characters and include uppercase, lowercase, and numeric
+   characters.
+5. Load the existing demo records with `npm run db:seed`.
+
+Users sign in through `/login` with the email stored in `User.email`. Sessions
+are signed, HttpOnly cookies and workspace access is enforced on the server.
+Administrators can create employees with an email and temporary password from
+the Employees page; passwords are stored only as salted scrypt hashes.
 
 Every seeded ticket gets a unique `publicToken`. Its shareable URL is
 `NEXT_PUBLIC_APP_URL/customer/jobs/<publicToken>`. The same token is available

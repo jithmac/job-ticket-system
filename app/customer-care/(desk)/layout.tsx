@@ -1,4 +1,6 @@
 import { getTickets } from "@/lib/db-data";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import { urgency } from "@/lib/tickets";
 import { DeskShell } from "../_components/desk-shell";
 import { careRow } from "../_components/rows";
@@ -9,6 +11,7 @@ import { careRow } from "../_components/rows";
  * without the employees/reports pages getting it too.
  */
 export default async function DeskLayout({ children }: { children: React.ReactNode }) {
+  await requireRole([UserRole.CARE]);
   const tickets = await getTickets();
   const sorted = [...tickets].sort((a, b) => urgency(b) - urgency(a));
   const rows = await Promise.all(sorted.map(careRow));

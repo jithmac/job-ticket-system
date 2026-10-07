@@ -3,7 +3,9 @@ import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { NavLink } from "@/components/nav-link";
-import { currentEmployeeId, getEmployee } from "@/lib/db-data";
+import { getEmployee } from "@/lib/db-data";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import { EmployeeMobileNav } from "./_components/mobile-nav";
 import { employeeNav } from "./_components/nav-items";
 
@@ -16,7 +18,8 @@ export const metadata: Metadata = {
  * while navigating between child pages, so only the <main> content swaps.
  */
 export default async function EmployeeLayout({ children }: LayoutProps<"/employee">) {
-  const me = (await getEmployee(currentEmployeeId))!;
+  const session = await requireRole([UserRole.EMPLOYEE]);
+  const me = (await getEmployee(session.id))!;
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen flex flex-col font-body-md">
@@ -71,7 +74,7 @@ export default async function EmployeeLayout({ children }: LayoutProps<"/employe
           </div>
           <div className="flex flex-col items-center">
             <Link
-              href="/"
+              href="/api/auth/logout"
               className="w-10 h-10 rounded border border-slate-border text-on-surface-variant hover:border-safety-orange hover:text-safety-orange flex items-center justify-center transition-colors group relative"
               title="Logout"
             >

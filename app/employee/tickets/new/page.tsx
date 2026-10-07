@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { categories, currentEmployeeId, getClients, getEmployee, getEmployees } from "@/lib/db-data";
+import { categories, getClients, getEmployee, getEmployees } from "@/lib/db-data";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import { emptyDraft, nextTicketId } from "../../_components/draft";
 import { RecentTicketsCard } from "../../_components/recent-tickets-card";
 import { TicketWizard } from "../../_components/ticket-wizard";
@@ -8,8 +10,9 @@ import { PageHeader, SlaPolicyBanner } from "../../_components/ui";
 export const metadata: Metadata = { title: "New Ticket" };
 
 export default async function NewTicketPage() {
+  const session = await requireRole([UserRole.EMPLOYEE]);
   const [me, employees, clients, ticketId] = await Promise.all([
-    getEmployee(currentEmployeeId),
+    getEmployee(session.id),
     getEmployees(),
     getClients(),
     nextTicketId(),

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
+import { requireRole } from "@/lib/auth";
 import { getCareAgent } from "@/lib/db-data";
+import { UserRole } from "@prisma/client";
 import { CareNav } from "./_components/care-nav";
 
 export const metadata: Metadata = {
@@ -10,6 +12,7 @@ export const metadata: Metadata = {
 
 /** Shell for every /customer-care/* route (header + footer from the customer-care sample). */
 export default async function CustomerCareLayout({ children }: LayoutProps<"/customer-care">) {
+  await requireRole([UserRole.CARE]);
   const careAgent = await getCareAgent();
   return (
     <div className="portal-shell font-body-md text-on-surface bg-[#eff4fa] min-h-screen flex flex-col">

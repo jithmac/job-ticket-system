@@ -1,3 +1,8 @@
+// This file hadnles all the data fetching and converting currently
+// If the system get bigger then this single file needs devide according to the domain. 
+// It has reusable queries and data conversion functions that can be used in the API routes and server components
+
+
 import { Prisma, UserRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { Attachment, Client, Employee, Ticket } from "@/lib/types";

@@ -10,10 +10,11 @@ export interface NewEmployeeInput {
   skillLevel: string;
   title: string;
   email: string;
+  password: string;
   phone: string;
 }
 
-const blank: NewEmployeeInput = { name: "", department: "", skillLevel: "", title: "", email: "", phone: "" };
+const blank: NewEmployeeInput = { name: "", department: "", skillLevel: "", title: "", email: "", password: "", phone: "" };
 
 const fieldCls =
   "form-input w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-label-mono text-slate-800 placeholder:text-slate-400 focus:border-safety-orange outline-none";
@@ -37,34 +38,21 @@ export function AddEmployeeForm({
   const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState(activeCount);
 
-  function submit() {
-    if (!form.name.trim() || !form.department || !form.skillLevel || !form.email.includes("@")) {
-      setError("Name, department, skill level and a valid email are required.");
+  async function submit() {
+    setError(null);
+    const response = await fetch("/api/admin/employees", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const result = (await response.json()) as { employee?: Employee; error?: string };
+    if (!response.ok || !result.employee) {
+      setError(result.error ?? "Unable to create employee.");
       return;
     }
-    const id = `EMP-${600 + count}`;
-    const employee: Employee = {
-      id,
-      name: form.name.trim(),
-      initials: form.name
-        .trim()
-        .split(/\s+/)
-        .map((p) => p[0]?.toUpperCase())
-        .slice(0, 2)
-        .join(""),
-      title: form.title.trim() || form.skillLevel,
-      department: form.department,
-      skillLevel: form.skillLevel,
-      email: form.email.trim(),
-      phone: form.phone.trim() || "—",
-      status: "available",
-      location: "HQ Dispatch",
-      joinedOn: new Date().toISOString().slice(0, 10),
-    };
-    onAdd?.(employee);
+    onAdd?.(result.employee);
     setCount((c) => c + 1);
-    setAdded(`${employee.name} registered as ${id}.`);
-    setError(null);
+    setAdded(`${result.employee.name} registered as ${result.employee.id}.`);
     setForm(blank);
   }
 
@@ -89,6 +77,14 @@ export function AddEmployeeForm({
           type="text"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+        <input
+          className={fieldCls}
+          placeholder="Temporary password (12+ chars, upper/lower/number)"
+          type="password"
+          autoComplete="new-password"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
         <div className="grid grid-cols-2 gap-2">
           <select className={selectCls} value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>

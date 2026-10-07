@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { NavLink } from "@/components/nav-link";
 import { getAdminUser } from "@/lib/db-data";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import { AdminMobileNav } from "./_components/mobile-nav";
 import { adminNav } from "./_components/nav-items";
 
@@ -14,6 +16,7 @@ export const metadata: Metadata = {
 
 /** Shell for every /admin/* route: top nav bar + collapsed icon dock (from the admin sample). */
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
+  await requireRole([UserRole.ADMIN]);
   const adminUser = await getAdminUser();
   return (
     <div className="bg-[#F1F5F9] text-on-surface font-body-md min-h-screen">
@@ -121,7 +124,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         </div>
         <div className="mt-auto flex flex-col items-center gap-2 w-full px-2">
           <Link
-            href="/"
+            href="/api/auth/logout"
             className="w-10 h-10 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
             title="Logout"
           >

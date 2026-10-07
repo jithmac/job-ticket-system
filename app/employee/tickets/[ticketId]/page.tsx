@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { currentEmployeeId, getClient, getEmployee, getTicket, getTickets } from "@/lib/db-data";
+import { notFound, redirect } from "next/navigation";
+import { getClient, getEmployee, getTicket, getTickets } from "@/lib/db-data";
+import { requireRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import { customerJobUrl, ticketCrew } from "@/lib/tickets";
 import { TicketWorkspace } from "../../_components/ticket-workspace";
 import { PageHeader, PriorityBadge, StatusBadge } from "../../_components/ui";
@@ -17,9 +19,13 @@ export async function generateMetadata({ params }: PageProps<"/employee/tickets/
 }
 
 export default async function EmployeeTicketPage({ params }: PageProps<"/employee/tickets/[ticketId]">) {
+  const session = await requireRole([UserRole.EMPLOYEE]);
   const { ticketId } = await params;
   const ticket = await getTicket(ticketId);
   if (!ticket) notFound();
+  if (ticket.ownerId !== session.id && ticket.createdById !== session.id && !ticket.participantIds.includes(session.id)) {
+    redirect("/employee/tickets");
+  }
 
   return (
     <>
@@ -43,7 +49,7 @@ export default async function EmployeeTicketPage({ params }: PageProps<"/employe
         ticket={ticket}
         crew={await ticketCrew(ticket)}
         client={(await getClient(ticket.clientId))!}
-        me={(await getEmployee(currentEmployeeId))!}
+        me={(await getEmployee(session.id))!}
         customerLink={customerJobUrl(ticket)}
       />
     </>
