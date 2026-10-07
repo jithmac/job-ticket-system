@@ -35,11 +35,13 @@ export function TicketWorkspace({
   crew,
   client,
   me,
+  customerLink,
 }: {
   ticket: Ticket;
   crew: Employee[];
   client: Client;
   me: Employee;
+  customerLink: string;
 }) {
   const [subtasks, setSubtasks] = useState<Subtask[]>(ticket.subtasks);
   const [ownerId, setOwnerId] = useState(ticket.ownerId);
@@ -129,6 +131,21 @@ export function TicketWorkspace({
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       {/* ------------------------------------------------------- main column */}
       <div className="lg:col-span-8 flex flex-col gap-6">
+        <div className="bg-white border border-slate-200 rounded p-4 shadow-sm flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-xs font-label-mono font-bold uppercase tracking-wider text-slate-700">
+            <Icon name="link" className="text-safety-orange text-base" />
+            Customer share link
+          </div>
+          <a
+            href={customerLink}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-safety-orange hover:underline break-all"
+          >
+            {customerLink}
+          </a>
+          <p className="text-xs text-slate-500">Send this unique URL to the customer for read-only job progress access.</p>
+        </div>
         {/* Job progression strip */}
         <div className="bg-surface-container-lowest border border-slate-border rounded-lg shadow-sm overflow-hidden">
           <div className="bg-slate-dark text-white p-4 md:px-6">

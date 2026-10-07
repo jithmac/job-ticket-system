@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { currentEmployeeId, tickets } from "@/lib/data";
-import { getClient, getEmployee, getTicket, ticketCrew } from "@/lib/tickets";
+import { customerJobUrl, getClient, getEmployee, getTicket, ticketCrew } from "@/lib/tickets";
 import { TicketWorkspace } from "../../_components/ticket-workspace";
 import { PageHeader, PriorityBadge, StatusBadge } from "../../_components/ui";
 
@@ -43,6 +43,7 @@ export default async function EmployeeTicketPage({ params }: PageProps<"/employe
         crew={ticketCrew(ticket)}
         client={getClient(ticket.clientId)!}
         me={getEmployee(currentEmployeeId)!}
+        customerLink={customerJobUrl(ticket)}
       />
     </>
   );

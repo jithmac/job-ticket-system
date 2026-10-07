@@ -34,3 +34,18 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## PostgreSQL database
+
+This project includes a Prisma schema for PostgreSQL. It stores employee/user
+details, customer details, job tickets, ticket crew, subtasks, attachments,
+activity, priority requests, billing, and the opaque customer-facing token for
+each job.
+
+1. Copy `.env.example` to `.env` and set `DATABASE_URL`.
+2. Run `npm run db:generate`.
+3. Create the database tables with `npm run db:migrate -- --name init`.
+4. Load the existing demo records with `npm run db:seed`.
+
+Every seeded ticket gets a unique `publicToken`. Its shareable URL is
+`NEXT_PUBLIC_APP_URL/customer/jobs/<publicToken>`. The same token is available
+through `GET /api/jobs/<publicToken>`.

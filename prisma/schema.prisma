@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+  CUSTOMER
+  CARE
+}
+
+enum TicketStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  ON_HOLD
+  AWAITING_SIGNOFF
+  COMPLETED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SubtaskStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+enum ActivityKind {
+  SYSTEM
+  EMPLOYEE
+  CUSTOMER_CARE
+  ADMIN
+}
+
+model User {
+  id               String            @id
+  name             String
+  email            String            @unique
+  phone            String?
+  role             UserRole
+  title            String?
+  department       String?
+  passwordHash     String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  createdTickets   Ticket[]          @relation("CreatedTickets")
+  ownedTickets     Ticket[]          @relation("OwnedTickets")
+  participants     TicketCrew[]
+  subtaskAssignees SubtaskAssignee[]
+  activities       Activity[]
+  customer         Customer?
+}
+
+model Customer {
+  id             String   @id
+  name           String
+  facility       String
+  address        String
+  contractRef    String
+  tier           String
+  contactName    String
+  contactRole    String
+  contactEmail   String
+  contactPhone   String
+  accessLevel    String
+  safetyProtocol String
+  userId         String?  @unique
+  user           User?    @relation(fields: [userId], references: [id])
+  tickets        Ticket[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Ticket {
+  id               String            @id
+  jobId            String            @unique
+  publicToken      String            @unique @default(cuid())
+  title            String
+  assetTag         String
+  description      String
+  category         String
+  priority         Priority
+  status           TicketStatus
+  startDate        DateTime
+  endDate          DateTime
+  createdById      String
+  ownerId          String
+  customerId       String
+  createdBy        User              @relation("CreatedTickets", fields: [createdById], references: [id])
+  owner            User              @relation("OwnedTickets", fields: [ownerId], references: [id])
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  crew             TicketCrew[]
+  subtasks         Subtask[]
+  attachments      Attachment[]
+  activities       Activity[]
+  priorityRequests PriorityRequest[]
+  billing          Billing?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model TicketCrew {
+  ticketId String
+  userId   String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+}
+
+model Subtask {
+  id          String            @id
+  ticketId    String
+  title       String
+  description String
+  estimate    String
+  status      SubtaskStatus
+  progress    Int               @default(0)
+  dueDate     DateTime?
+  completedAt DateTime?
+  ticket      Ticket            @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  assignees   SubtaskAssignee[]
+}
+
+model SubtaskAssignee {
+  subtaskId String
+  userId    String
+  subtask   Subtask @relation(fields: [subtaskId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([subtaskId, userId])
+}
+
+model Attachment {
+  id       String @id
+  ticketId String
+  name     String
+  size     String
+  kind     String
+  label    String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id                 String       @id
+  ticketId           String
+  kind               ActivityKind
+  authorId           String?
+  authorName         String
+  authorRole         String
+  text               String
+  visibleToEmployees Boolean      @default(false)
+  at                 DateTime     @default(now())
+  ticket             Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author             User?        @relation(fields: [authorId], references: [id])
+}
+
+model PriorityRequest {
+  id          String   @id
+  ticketId    String
+  from        Priority
+  to          Priority
+  reason      String
+  requestedBy String
+  status      String
+  at          DateTime @default(now())
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model Billing {
+  id        String     @id
+  ticketId  String     @unique
+  invoiceId String
+  issuedOn  DateTime
+  dueDate   DateTime
+  taxRate   Decimal    @db.Decimal(5, 2)
+  ticket    Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  lines     BillLine[]
+}
+
+model BillLine {
+  id          String  @id
+  billingId   String
+  description String
+  qty         Decimal @db.Decimal(10, 2)
+  unit        String
+  rate        Decimal @db.Decimal(12, 2)
+  billing     Billing @relation(fields: [billingId], references: [id], onDelete: Cascade)
+}

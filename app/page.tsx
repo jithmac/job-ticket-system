@@ -3,7 +3,7 @@ import { Icon } from "@/components/icon";
 
 const panels = [
   {
-    href: "/employee",
+    href: "/login?role=employee",
     title: "Employee Panel",
     icon: "engineering",
     accent: "bg-blue-600",
@@ -11,7 +11,7 @@ const panels = [
     does: ["Create tickets step-by-step", "Update tickets & subtasks", "Pass tickets to crew", "View previous tickets"],
   },
   {
-    href: "/admin",
+    href: "/login?role=admin",
     title: "Admin Panel",
     icon: "build",
     accent: "bg-safety-orange",
@@ -19,24 +19,15 @@ const panels = [
     does: ["Add / remove employees", "Clients & jobs", "Progress reports", "Manage ticket crews"],
   },
   {
-    href: "/customer-care",
+    href: "/login?role=customer-care",
     title: "Customer Care",
     icon: "support_agent",
     accent: "bg-industrial-green",
     who: "Dispatch & support desk",
     does: ["Search by ticket / employee ID", "Notes visible to employees", "Request priority changes", "Progress & end dates"],
   },
-  {
-    href: "/customer",
-    title: "Customer Portal",
-    icon: "corporate_fare",
-    accent: "bg-machinery-amber",
-    who: "Clients",
-    does: ["Job progress per sub-task", "Your service team", "End dates", "Print bill & request reports"],
-  },
 ];
 
-/** Temporary entry point until authentication routes each role to its own panel. */
 export default function Home() {
   return (
     <div className="portal-shell min-h-screen bg-background flex flex-col">
@@ -54,7 +45,7 @@ export default function Home() {
           </div>
           <h1 className="font-headline-xl text-headline-xl tracking-tight mt-space-xs">Choose a panel</h1>
           <p className="font-body-md text-body-md text-primary-fixed-dim mt-space-xs max-w-2xl">
-            Each panel is a separate section of the app with its own layout and navigation. Sign-in will route users here automatically later.
+            Each panel is a separate section of the app with its own layout and navigation. Sign in to the workspace that matches your role. Customer access is shared through support and does not require an account.
           </p>
         </div>
       </section>

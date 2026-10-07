@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { formatDate, getClient, isOverdue, remainingLabel, statusLabel, ticketProgress } from "@/lib/tickets";
+import { customerJobUrl, formatDate, getClient, isOverdue, remainingLabel, statusLabel, ticketProgress } from "@/lib/tickets";
 import type { Ticket } from "@/lib/types";
 
 /** "Hero Work Order Dossier" card from the customer sample. */
@@ -9,6 +9,7 @@ export function JobHero({ job, compact = false }: { job: Ticket; compact?: boole
   const overdue = isOverdue(job);
   const done = job.status === "completed";
   const progress = ticketProgress(job);
+  const customerLink = customerJobUrl(job);
 
   return (
     <div className="relative bg-surface-container-lowest rounded-xl shadow-md p-space-lg overflow-hidden">
@@ -30,6 +31,12 @@ export function JobHero({ job, compact = false }: { job: Ticket; compact?: boole
             </div>
             <span className="font-label-mono-sm text-label-mono-sm text-on-surface-variant uppercase">{job.category}</span>
           </div>
+          <a
+            href={customerLink}
+            className="inline-flex items-center gap-1 text-[11px] font-label-mono uppercase tracking-wider text-safety-orange hover:underline"
+          >
+            <Icon name="link" className="text-sm" /> Shareable customer link
+          </a>
           <h1 className={`${compact ? "font-headline-lg text-headline-lg" : "font-headline-xl text-headline-xl"} text-on-surface tracking-tight`}>
             {compact ? (
               <Link href={`/customer/jobs/${job.jobId}`} className="hover:text-safety-orange transition-colors">

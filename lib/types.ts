@@ -107,6 +107,8 @@ export interface Billing {
 export interface Ticket {
   id: string;
   jobId: string;
+  /** Opaque token used in the customer-facing job URL. */
+  publicToken?: string;
   title: string;
   assetTag: string;
   clientId: string;

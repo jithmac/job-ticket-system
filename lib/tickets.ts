@@ -1,4 +1,5 @@
 import { clients, employees, tickets } from "./data";
+import { publicJobUrl } from "./public-links";
 import type { Employee, Ticket } from "./types";
 
 /* Server-side lookups over the mock data. Pure helpers live in ./format so
@@ -13,6 +14,14 @@ export function getTicket(id: string) {
 
 export function getTicketByJobId(jobId: string) {
   return tickets.find((t) => t.jobId === jobId);
+}
+
+export function getTicketByPublicToken(publicToken: string) {
+  return tickets.find((t) => publicToken === `demo-${t.jobId}`);
+}
+
+export function customerJobUrl(ticket: Ticket) {
+  return publicJobUrl(ticket.publicToken ?? `demo-${ticket.jobId}`);
 }
 
 export function getEmployee(id: string) {
@@ -39,4 +48,3 @@ export function ticketsForEmployee(employeeId: string) {
 export function ticketsForClient(clientId: string) {
   return tickets.filter((t) => t.clientId === clientId);
 }
-

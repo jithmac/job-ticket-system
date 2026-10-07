@@ -81,9 +81,7 @@ export function FieldLabel({
       htmlFor={htmlFor}
     >
       <span className="flex items-center gap-1">
-        // This uses the Icon component from UI
         <Icon name={icon} className="text-sm text-safety-orange" />
-        // This is the label text 
         {children} {required && <span className="text-safety-orange font-bold">*</span>}
       </span>
       {hint && <span className="text-[11px] font-label-mono text-outline font-normal">{hint}</span>}

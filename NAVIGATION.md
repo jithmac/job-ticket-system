@@ -1,8 +1,8 @@
 # Navigation & Route Map
 
-How the four panels are wired with the Next.js 16 App Router. All data currently
-comes from `lib/data.ts` (mock); interactive changes are local component state
-until a backend is added.
+How the four panels are wired with the Next.js 16 App Router. The screens still
+use `lib/data.ts` as their demo dataset, while the Prisma/PostgreSQL schema and
+seed path provide the persistence layer for the backend migration.
 
 ## Route tree
 
@@ -43,7 +43,8 @@ app/
 └── customer/                  ── Customer portal ──
     ├── layout.tsx             Header, status bar, footer
     ├── page.tsx               /customer                         Your jobs
-    ├── jobs/[jobId]/page.tsx  /customer/jobs/JOB-8942           Sub-task progress, team, docs
+    ├── jobs/[jobId]/page.tsx  /customer/jobs/JOB-8942 or demo-JOB-8942
+    │                                                            Sub-task progress, team, docs
     └── jobs/[jobId]/bill/page.tsx  /customer/jobs/JOB-8942/bill Printable bill
 ```
 
@@ -68,4 +69,22 @@ app/
 - **Employee passes ticket**: changes `ownerId` (the holder). The holder shows up across all panels.
 - **Customer report request / bill**: report requests go to customer care. Bills come from `ticket.billing`.
 
-Persist these with Server Actions or Route Handlers that update `lib/data.ts`'s replacement.
+## Database
+
+The PostgreSQL schema is in `prisma/schema.prisma`. It stores users,
+customers, tickets, subtasks, attachments, activity, priority requests, and
+billing. Each ticket receives a random `publicToken` with a unique database
+constraint. The customer link is generated as
+`NEXT_PUBLIC_APP_URL/customer/jobs/<publicToken>`, and the token can also be
+resolved through `GET /api/jobs/<publicToken>`.
+
+Copy `.env.example` to `.env`, set `DATABASE_URL`, then run:
+
+```bash
+npm run db:generate
+npm run db:migrate -- --name init
+npm run db:seed
+```
+
+The seed imports the existing demo employees, customers, and tickets. Existing
+demo links use `demo-<jobId>` until the UI is switched fully to database reads.

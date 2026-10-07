@@ -11,6 +11,7 @@ import {
   formatDateTime,
   formatMoney,
   getClient,
+  getTicketByPublicToken,
   getTicketByJobId,
   phaseLabel,
   ticketCrew,
@@ -22,7 +23,10 @@ import { JobHero } from "../../_components/job-hero";
 
 /** Customers only ever get pages for their own jobs. */
 export function generateStaticParams() {
-  return ticketsForClient(currentClientId).map((t) => ({ jobId: t.jobId }));
+  return ticketsForClient(currentClientId).flatMap((t) => [
+    { jobId: t.jobId },
+    { jobId: `demo-${t.jobId}` },
+  ]);
 }
 
 export async function generateMetadata({ params }: PageProps<"/customer/jobs/[jobId]">): Promise<Metadata> {
@@ -34,7 +38,7 @@ const lgCols: Record<number, string> = { 1: "lg:grid-cols-1", 2: "lg:grid-cols-2
 
 export default async function CustomerJobPage({ params }: PageProps<"/customer/jobs/[jobId]">) {
   const { jobId } = await params;
-  const job = getTicketByJobId(jobId);
+  const job = getTicketByJobId(jobId) ?? getTicketByPublicToken(jobId);
   if (!job || job.clientId !== currentClientId) notFound();
 
   const client = getClient(job.clientId)!;
