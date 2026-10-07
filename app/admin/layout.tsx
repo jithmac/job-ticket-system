@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { NavLink } from "@/components/nav-link";
-import { adminUser } from "@/lib/data";
+import { getAdminUser } from "@/lib/db-data";
 import { AdminMobileNav } from "./_components/mobile-nav";
 import { adminNav } from "./_components/nav-items";
 
@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 };
 
 /** Shell for every /admin/* route: top nav bar + collapsed icon dock (from the admin sample). */
-export default function AdminLayout({ children }: LayoutProps<"/admin">) {
+export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
+  const adminUser = await getAdminUser();
   return (
     <div className="bg-[#F1F5F9] text-on-surface font-body-md min-h-screen">
       {/* TopNavBar with Industrial Branding & Controls */}

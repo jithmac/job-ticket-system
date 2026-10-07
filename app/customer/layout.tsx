@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { NavLink } from "@/components/nav-link";
-import { careAgent, currentClientId } from "@/lib/data";
-import { getClient } from "@/lib/tickets";
+import { currentClientId, getCareAgent, getClient } from "@/lib/db-data";
 
 export const metadata: Metadata = {
   title: { template: "%s | Customer Portal", default: "Customer Portal" },
 };
 
 /** Shell for every /customer/* route (header, status sub-bar and footer from the customer sample). */
-export default function CustomerLayout({ children }: LayoutProps<"/customer">) {
-  const client = getClient(currentClientId)!;
+export default async function CustomerLayout({ children }: LayoutProps<"/customer">) {
+  const [resolvedClient, careAgent] = await Promise.all([getClient(currentClientId), getCareAgent()]);
+  if (!resolvedClient) throw new Error(`Customer ${currentClientId} was not found.`);
+  const client = resolvedClient;
 
   return (
     <div className="portal-shell font-body-md text-on-surface bg-[#eff4fa] min-h-screen flex flex-col">

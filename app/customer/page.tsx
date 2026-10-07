@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { currentClientId } from "@/lib/data";
-import { formatDate, ticketsForClient } from "@/lib/tickets";
+import { currentClientId, getTicketsForClient } from "@/lib/db-data";
+import { formatDate } from "@/lib/tickets";
 import { JobHero } from "./_components/job-hero";
 
 export const metadata: Metadata = { title: "Your Jobs" };
 
-export default function CustomerJobsPage() {
-  const jobs = ticketsForClient(currentClientId);
+export default async function CustomerJobsPage() {
+  const jobs = await getTicketsForClient(currentClientId);
   const active = jobs.filter((j) => j.status !== "completed").sort((a, b) => a.endDate.localeCompare(b.endDate));
   const past = jobs.filter((j) => j.status === "completed");
 

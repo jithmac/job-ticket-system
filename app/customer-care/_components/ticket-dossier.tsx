@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
-import { careAgent } from "@/lib/data";
+import { getCareAgent, getClient } from "@/lib/db-data";
 import {
   activeSubtaskIndex,
   formatDate,
   formatDateTime,
-  getClient,
   isOverdue,
   phaseLabel,
   remainingLabel,
@@ -24,9 +23,10 @@ import { SectionCard, SectionHeading } from "./ui";
 const colsClass: Record<number, string> = { 1: "md:grid-cols-1", 2: "md:grid-cols-2", 3: "md:grid-cols-3", 4: "md:grid-cols-4" };
 
 /** Right-hand "Active Dossier" from the customer-care sample. */
-export function TicketDossier({ ticket }: { ticket: Ticket }) {
-  const client = getClient(ticket.clientId)!;
-  const crew = ticketCrew(ticket);
+export async function TicketDossier({ ticket }: { ticket: Ticket }) {
+  const [resolvedClient, crew, careAgent] = await Promise.all([getClient(ticket.clientId), ticketCrew(ticket), getCareAgent()]);
+  if (!resolvedClient) throw new Error(`Customer ${ticket.clientId} was not found for ticket ${ticket.id}.`);
+  const client = resolvedClient;
   const progress = ticketProgress(ticket);
   const active = activeSubtaskIndex(ticket);
   const overdue = isOverdue(ticket);

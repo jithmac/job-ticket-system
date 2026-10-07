@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link"; // use to navigate
 import { Icon } from "@/components/icon";
-import { currentEmployeeId } from "@/lib/data";
+import { currentEmployeeId, getClients, getEmployee } from "@/lib/db-data";
 import {
   daysRemaining,
   formatDate,
   formatDateTime,
-  getClient,
-  getEmployee,
   remainingLabel,
   ticketProgress,
   ticketsForEmployee,
@@ -18,9 +16,11 @@ import { Card, CardHeader, PageHeader, PriorityBadge, ProgressBar, SlaPolicyBann
 
 export const metadata: Metadata = { title: "Overview" };
 
-export default function EmployeeOverviewPage() {
-  const me = getEmployee(currentEmployeeId)!;
-  const mine = ticketsForEmployee(me.id);
+export default async function EmployeeOverviewPage() {
+  const me = (await getEmployee(currentEmployeeId))!;
+  const mine = await ticketsForEmployee(me.id);
+  const clients = await getClients();
+  const clientsById = new Map(clients.map((client) => [client.id, client]));
   const active = mine.filter((t) => t.status !== "completed").sort((a, b) => urgency(b) - urgency(a));
   const mySubtasks = active.flatMap((t) =>
     t.subtasks.filter((s) => s.status !== "done" && s.assigneeIds.includes(me.id)).map((s) => ({ ticket: t, subtask: s })),
@@ -101,7 +101,7 @@ export default function EmployeeOverviewPage() {
                     </div>
                     <p className="text-sm font-semibold text-on-surface line-clamp-1">{t.title}</p>
                     <p className="text-[11px] font-label-mono text-on-surface-variant mb-2.5">
-                      {getClient(t.clientId)?.name} • Ends {formatDate(t.endDate)} • {remainingLabel(t)}
+                      {clientsById.get(t.clientId)?.name} • Ends {formatDate(t.endDate)} • {remainingLabel(t)}
                     </p>
                     <div className="flex items-center gap-2">
                       <ProgressBar value={progress} />

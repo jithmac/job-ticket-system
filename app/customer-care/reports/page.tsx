@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { tickets } from "@/lib/data";
+import { getTickets, getClient, getEmployee } from "@/lib/db-data";
 import {
   activeSubtaskIndex,
   daysRemaining,
   formatDate,
-  getClient,
-  getEmployee,
   isOverdue,
   remainingLabel,
   ticketProgress,
@@ -16,7 +14,14 @@ import { CommandBand, PriorityTag } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Progress Reports" };
 
-export default function CareReportsPage() {
+export default async function CareReportsPage() {
+  const tickets = await getTickets();
+  const [clients, employees] = await Promise.all([
+    Promise.all(tickets.map((ticket) => getClient(ticket.clientId))),
+    Promise.all(tickets.flatMap((ticket) => [ticket.ownerId, ...ticket.participantIds]).map((id) => getEmployee(id))),
+  ]);
+  const clientsById = new Map(clients.filter(Boolean).map((client) => [client!.id, client!]));
+  const employeesById = new Map(employees.filter(Boolean).map((employee) => [employee!.id, employee!]));
   const active = tickets.filter((t) => t.status !== "completed").sort((a, b) => a.endDate.localeCompare(b.endDate));
   const done = tickets.filter((t) => t.status === "completed");
   const dueSoon = active.filter((t) => daysRemaining(t) >= 0 && daysRemaining(t) <= 7);
@@ -84,7 +89,7 @@ export default function CareReportsPage() {
                           <PriorityTag priority={t.priority} suffix={false} />
                         </div>
                       </td>
-                      <td className="px-space-md py-space-sm align-top text-on-surface">{getClient(t.clientId)?.name}</td>
+                      <td className="px-space-md py-space-sm align-top text-on-surface">{clientsById.get(t.clientId)?.name}</td>
                       <td className="px-space-md py-space-sm align-top text-on-surface-variant">
                         {idx === -1 ? "Awaiting sign-off" : `${idx + 1}/${t.subtasks.length} • ${t.subtasks[idx].title}`}
                       </td>
@@ -104,7 +109,7 @@ export default function CareReportsPage() {
                           {remainingLabel(t)}
                         </div>
                       </td>
-                      <td className="px-space-md py-space-sm align-top font-label-mono text-label-mono text-slate-dark">{getEmployee(t.ownerId)?.name}</td>
+                      <td className="px-space-md py-space-sm align-top font-label-mono text-label-mono text-slate-dark">{employeesById.get(t.ownerId)?.name}</td>
                     </tr>
                   );
                 })}
@@ -124,7 +129,7 @@ export default function CareReportsPage() {
                 <span className="font-label-mono text-label-mono font-bold text-slate-dark">#{t.id}</span>
                 <span className="font-body-sm text-body-sm font-bold text-slate-dark line-clamp-1">{t.title}</span>
                 <span className="font-label-mono-sm text-label-mono-sm text-on-surface-variant">
-                  {getClient(t.clientId)?.name} • Closed {formatDate(t.endDate)}
+                  {clientsById.get(t.clientId)?.name} • Closed {formatDate(t.endDate)}
                 </span>
               </Link>
             ))}

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { departments, employees, skillLevels, tickets } from "@/lib/data";
+import { departments, getEmployees, getTickets, skillLevels } from "@/lib/db-data";
 import { EmployeeRoster } from "../_components/employee-roster";
 import { PageTitle } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Employees / Crew" };
 
-export default function AdminEmployeesPage() {
+export default async function AdminEmployeesPage() {
+  const [employees, tickets] = await Promise.all([getEmployees(), getTickets()]);
   const workload: Record<string, number> = {};
   for (const t of tickets) {
     if (t.status === "completed") continue;

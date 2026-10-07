@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { clients } from "@/lib/data";
+import { getClients } from "@/lib/db-data";
 import { formatDate, getEmployee, remainingLabel, ticketProgress, ticketsForClient } from "@/lib/tickets";
 import { PageTitle, ProgressTrack, StatusPill } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Clients & Jobs" };
 
-export default function AdminClientsPage() {
+export default async function AdminClientsPage() {
+  const clients = await getClients();
+  const jobsByClient = new Map(
+    await Promise.all(
+      clients.map(async (client) => [client.id, (await ticketsForClient(client.id)).sort((a, b) => b.startDate.localeCompare(a.startDate))] as const),
+    ),
+  );
+  const employeeIds = [...jobsByClient.values()].flat().map((ticket) => ticket.ownerId);
+  const employees = new Map((await Promise.all(employeeIds.map((id) => getEmployee(id)))).filter(Boolean).map((employee) => [employee!.id, employee!]));
   return (
     <>
       <PageTitle
@@ -20,7 +28,7 @@ export default function AdminClientsPage() {
       />
       <div className="flex flex-col gap-6">
         {clients.map((c) => {
-          const jobs = ticketsForClient(c.id).sort((a, b) => b.startDate.localeCompare(a.startDate));
+          const jobs = jobsByClient.get(c.id) ?? [];
           const active = jobs.filter((j) => j.status !== "completed").length;
           return (
             <section key={c.id} id={c.id} className="bg-white border border-slate-200 rounded p-6 flex flex-col gap-4 shadow-sm scroll-mt-24">
@@ -90,7 +98,7 @@ export default function AdminClientsPage() {
                               {j.title}
                             </Link>
                           </td>
-                          <td className="py-2.5 pr-4 font-label-mono text-slate-700">{getEmployee(j.ownerId)?.name}</td>
+                          <td className="py-2.5 pr-4 font-label-mono text-slate-700">{employees.get(j.ownerId)?.name}</td>
                           <td className="py-2.5 pr-4">
                             <StatusPill status={j.status} />
                           </td>

@@ -1,23 +1,24 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { currentEmployeeId, tickets } from "@/lib/data";
-import { customerJobUrl, getClient, getEmployee, getTicket, ticketCrew } from "@/lib/tickets";
+import { currentEmployeeId, getClient, getEmployee, getTicket, getTickets } from "@/lib/db-data";
+import { customerJobUrl, ticketCrew } from "@/lib/tickets";
 import { TicketWorkspace } from "../../_components/ticket-workspace";
 import { PageHeader, PriorityBadge, StatusBadge } from "../../_components/ui";
 
 /** Pre-render every known ticket at build time (static, instantly prefetchable). */
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const tickets = await getTickets();
   return tickets.map((t) => ({ ticketId: t.id }));
 }
 
 export async function generateMetadata({ params }: PageProps<"/employee/tickets/[ticketId]">): Promise<Metadata> {
   const { ticketId } = await params;
-  return { title: getTicket(ticketId)?.title ?? ticketId };
+  return { title: (await getTicket(ticketId))?.title ?? ticketId };
 }
 
 export default async function EmployeeTicketPage({ params }: PageProps<"/employee/tickets/[ticketId]">) {
   const { ticketId } = await params;
-  const ticket = getTicket(ticketId);
+  const ticket = await getTicket(ticketId);
   if (!ticket) notFound();
 
   return (
@@ -40,9 +41,9 @@ export default async function EmployeeTicketPage({ params }: PageProps<"/employe
       />
       <TicketWorkspace
         ticket={ticket}
-        crew={ticketCrew(ticket)}
-        client={getClient(ticket.clientId)!}
-        me={getEmployee(currentEmployeeId)!}
+        crew={await ticketCrew(ticket)}
+        client={(await getClient(ticket.clientId))!}
+        me={(await getEmployee(currentEmployeeId))!}
         customerLink={customerJobUrl(ticket)}
       />
     </>

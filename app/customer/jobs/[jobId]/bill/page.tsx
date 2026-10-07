@@ -2,30 +2,31 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icon";
-import { currentClientId } from "@/lib/data";
-import { billTotals, formatDate, formatMoney, getClient, getEmployee, getTicketByJobId, ticketsForClient } from "@/lib/tickets";
+import { currentClientId, getTicketsForClient } from "@/lib/db-data";
+import { billTotals, formatDate, formatMoney, getClient, getEmployee, getTicketByJobId } from "@/lib/tickets";
 import { PrintButton } from "../../../_components/print-button";
 
-export function generateStaticParams() {
-  return ticketsForClient(currentClientId)
+export async function generateStaticParams() {
+  const tickets = await getTicketsForClient(currentClientId);
+  return tickets
     .filter((t) => t.billing)
     .map((t) => ({ jobId: t.jobId }));
 }
 
 export async function generateMetadata({ params }: PageProps<"/customer/jobs/[jobId]/bill">): Promise<Metadata> {
   const { jobId } = await params;
-  const job = getTicketByJobId(jobId);
+  const job = await getTicketByJobId(jobId);
   return { title: job?.billing ? `Invoice ${job.billing.invoiceId}` : "Bill" };
 }
 
 export default async function BillPage({ params }: PageProps<"/customer/jobs/[jobId]/bill">) {
   const { jobId } = await params;
-  const job = getTicketByJobId(jobId);
+  const job = await getTicketByJobId(jobId);
   if (!job || job.clientId !== currentClientId || !job.billing) notFound();
 
-  const client = getClient(job.clientId)!;
+  const client = (await getClient(job.clientId))!;
   const { subtotal, tax, total } = billTotals(job.billing);
-  const lead = getEmployee(job.ownerId);
+  const lead = await getEmployee(job.ownerId);
 
   return (
     <>

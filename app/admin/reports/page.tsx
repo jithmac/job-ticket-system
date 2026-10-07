@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { clients, employees, tickets } from "@/lib/data";
+import { getClients, getEmployees, getTickets } from "@/lib/db-data";
 import {
   activeSubtaskIndex,
   formatDate,
@@ -34,7 +34,9 @@ function health(t: Ticket) {
   return { label: "On Track", cls: "bg-emerald-50 text-emerald-800 border-emerald-300" };
 }
 
-export default function AdminReportsPage() {
+export default async function AdminReportsPage() {
+  const [clients, employees, tickets] = await Promise.all([getClients(), getEmployees(), getTickets()]);
+  const clientsById = new Map(clients.map((client) => [client.id, client]));
   const active = tickets.filter((t) => t.status !== "completed");
   const avgProgress = Math.round(active.reduce((s, t) => s + ticketProgress(t), 0) / Math.max(active.length, 1));
   const overdue = active.filter(isOverdue).length;
@@ -96,7 +98,7 @@ export default function AdminReportsPage() {
                         </div>
                         <div className="text-xs font-bold text-slate-900 truncate">{t.title}</div>
                         <div className="text-[10px] font-label-mono text-slate-500 truncate">
-                          {getClient(t.clientId)?.name} • {idx === -1 ? "All phases done" : `${phaseLabel(idx)}: ${t.subtasks[idx].title}`}
+                          {clientsById.get(t.clientId)?.name} • {idx === -1 ? "All phases done" : `${phaseLabel(idx)}: ${t.subtasks[idx].title}`}
                         </div>
                       </div>
                       <div className="md:col-span-5">

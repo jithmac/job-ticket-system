@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { currentEmployeeId } from "@/lib/data";
+import { currentEmployeeId, getClients, getEmployees } from "@/lib/db-data";
 import {
   formatDate,
-  getClient,
-  getEmployee,
   isOverdue,
   remainingLabel,
   ticketProgress,
@@ -17,16 +15,20 @@ import { PageHeader } from "../_components/ui";
 
 export const metadata: Metadata = { title: "My Tickets" };
 
-export default function MyTicketsPage() {
+export default async function MyTicketsPage() {
   // Rows are computed on the server; only plain data crosses into the client table.
-  const rows: TicketRow[] = ticketsForEmployee(currentEmployeeId)
+  const tickets = await ticketsForEmployee(currentEmployeeId);
+  const [clients, employees] = await Promise.all([getClients(), getEmployees()]);
+  const clientsById = new Map(clients.map((client) => [client.id, client]));
+  const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
+  const rows: TicketRow[] = tickets
     .sort((a, b) => urgency(b) - urgency(a))
     .map((t) => ({
       id: t.id,
       jobId: t.jobId,
       title: t.title,
-      client: getClient(t.clientId)?.name ?? "—",
-      holder: getEmployee(t.ownerId)?.name ?? "—",
+      client: clientsById.get(t.clientId)?.name ?? "—",
+      holder: employeesById.get(t.ownerId)?.name ?? "—",
       isHolder: t.ownerId === currentEmployeeId,
       role: t.ownerId === currentEmployeeId ? "Holder" : t.createdById === currentEmployeeId ? "Creator" : "Participant",
       priority: t.priority,

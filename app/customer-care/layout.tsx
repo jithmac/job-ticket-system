@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { careAgent } from "@/lib/data";
+import { getCareAgent } from "@/lib/db-data";
 import { CareNav } from "./_components/care-nav";
 
 export const metadata: Metadata = {
@@ -9,7 +9,8 @@ export const metadata: Metadata = {
 };
 
 /** Shell for every /customer-care/* route (header + footer from the customer-care sample). */
-export default function CustomerCareLayout({ children }: LayoutProps<"/customer-care">) {
+export default async function CustomerCareLayout({ children }: LayoutProps<"/customer-care">) {
+  const careAgent = await getCareAgent();
   return (
     <div className="portal-shell font-body-md text-on-surface bg-[#eff4fa] min-h-screen flex flex-col">
       <header className="fixed top-0 w-full z-50 bg-slate-dark text-on-primary border-b-2 border-safety-orange">

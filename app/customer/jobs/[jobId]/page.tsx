@@ -3,27 +3,26 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
-import { careAgent, currentClientId } from "@/lib/data";
+import { currentClientId, getCareAgent, getClient, getTicketsForClient } from "@/lib/db-data";
 import {
   billTotals,
   employeeStatusLabel,
   formatDate,
   formatDateTime,
   formatMoney,
-  getClient,
-  getTicketByPublicToken,
   getTicketByJobId,
   phaseLabel,
   ticketCrew,
   ticketProgress,
-  ticketsForClient,
 } from "@/lib/tickets";
+import { getTicketByPublicToken } from "@/lib/db-data";
 import { DocumentsHub } from "../../_components/documents-hub";
 import { JobHero } from "../../_components/job-hero";
 
 /** Customers only ever get pages for their own jobs. */
-export function generateStaticParams() {
-  return ticketsForClient(currentClientId).flatMap((t) => [
+export async function generateStaticParams() {
+  const tickets = await getTicketsForClient(currentClientId);
+  return tickets.flatMap((t) => [
     { jobId: t.jobId },
     { jobId: `demo-${t.jobId}` },
   ]);
@@ -31,18 +30,19 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/customer/jobs/[jobId]">): Promise<Metadata> {
   const { jobId } = await params;
-  return { title: getTicketByJobId(jobId)?.title ?? jobId };
+  return { title: (await getTicketByJobId(jobId))?.title ?? jobId };
 }
 
 const lgCols: Record<number, string> = { 1: "lg:grid-cols-1", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4" };
 
 export default async function CustomerJobPage({ params }: PageProps<"/customer/jobs/[jobId]">) {
   const { jobId } = await params;
-  const job = getTicketByJobId(jobId) ?? getTicketByPublicToken(jobId);
+  const job = (await getTicketByJobId(jobId)) ?? (await getTicketByPublicToken(jobId));
   if (!job || job.clientId !== currentClientId) notFound();
 
-  const client = getClient(job.clientId)!;
-  const crew = ticketCrew(job);
+  const [resolvedClient, crew, careAgent] = await Promise.all([getClient(job.clientId), ticketCrew(job), getCareAgent()]);
+  if (!resolvedClient) throw new Error(`Customer ${job.clientId} was not found for ticket ${job.id}.`);
+  const client = resolvedClient;
   const progress = ticketProgress(job);
   const gaugeOffset = 125.6 - (125.6 * progress) / 100;
   const totals = job.billing ? billTotals(job.billing) : null;

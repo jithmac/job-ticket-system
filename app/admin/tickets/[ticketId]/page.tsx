@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icon";
-import { adminUser, departments, employees, skillLevels, tickets } from "@/lib/data";
+import { departments, getAdminUser, getClient, getEmployee, getEmployees, getTicket, getTickets, skillLevels } from "@/lib/db-data";
 import {
   activeSubtaskIndex,
   daysRemaining,
   formatDateTime,
-  getClient,
-  getEmployee,
-  getTicket,
   phaseLabel,
   remainingLabel,
   ticketCrew,
@@ -21,7 +18,8 @@ import { CrewManager } from "../../_components/crew-manager";
 import { TicketControls } from "../../_components/ticket-controls";
 import { PageTitle, PhaseGrid } from "../../_components/ui";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const tickets = await getTickets();
   return tickets.map((t) => ({ ticketId: t.id }));
 }
 
@@ -34,14 +32,21 @@ const attachmentIcon = { image: "image", pdf: "picture_as_pdf", log: "terminal",
 
 export default async function AdminTicketPage({ params }: PageProps<"/admin/tickets/[ticketId]">) {
   const { ticketId } = await params;
-  const ticket = getTicket(ticketId);
+  const ticket = await getTicket(ticketId);
   if (!ticket) notFound();
 
-  const client = getClient(ticket.clientId)!;
-  const crew = ticketCrew(ticket);
+  const [resolvedClient, crew, employees, adminUser] = await Promise.all([
+    getClient(ticket.clientId),
+    ticketCrew(ticket),
+    getEmployees(),
+    getAdminUser(),
+  ]);
+  if (!resolvedClient) notFound();
+  const client = resolvedClient;
+  const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
   const progress = ticketProgress(ticket);
   const active = activeSubtaskIndex(ticket);
-  const clientTickets = ticketsForClient(client.id);
+  const clientTickets = await ticketsForClient(client.id);
   const live = ticket.status !== "completed";
 
   return (
@@ -108,7 +113,7 @@ export default async function AdminTicketPage({ params }: PageProps<"/admin/tick
                 <ol className="list-decimal pl-4 space-y-0.5 text-slate-600">
                   {ticket.subtasks.map((s) => (
                     <li key={s.id}>
-                      {s.title} — <span className="text-slate-500">{s.assigneeIds.map((id) => getEmployee(id)?.name).join(", ")}</span>
+                      {s.title} — <span className="text-slate-500">{s.assigneeIds.map((id) => employeesById.get(id)?.name).join(", ")}</span>
                     </li>
                   ))}
                 </ol>
@@ -202,7 +207,7 @@ export default async function AdminTicketPage({ params }: PageProps<"/admin/tick
             requests={ticket.priorityRequests}
             category={ticket.category}
             endDate={ticket.endDate}
-            holder={getEmployee(ticket.ownerId)?.name ?? "—"}
+            holder={employeesById.get(ticket.ownerId)?.name ?? "—"}
           >
             {/* Server-rendered children slotted inside a client component */}
             <CrewManager crew={crew} ownerId={ticket.ownerId} roster={employees} />

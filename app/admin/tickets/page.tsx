@@ -3,7 +3,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
-import { tickets } from "@/lib/data";
+import { getClients, getEmployees, getTickets } from "@/lib/db-data";
 import {
   formatDate,
   getClient,
@@ -28,25 +28,25 @@ const FILTERS = [
   { key: "completed", label: "Completed", test: (t: Ticket) => t.status === "completed" },
 ] as const;
 
-function searchText(t: Ticket) {
-  const crew = ticketCrew(t)
-    .map((e) => `${e.name} ${e.id}`)
-    .join(" ");
-  return `${t.id} ${t.jobId} ${t.title} ${getClient(t.clientId)?.name} ${t.category} ${crew}`.toLowerCase();
-}
-
 /**
  * Filtering happens on the server from the URL (?q=…&filter=…), so results are
  * shareable/bookmarkable and the header search can link straight here.
  */
 export default async function AdminTicketsPage({ searchParams }: PageProps<"/admin/tickets">) {
   const sp = await searchParams;
+  const [tickets, clients, employees] = await Promise.all([getTickets(), getClients(), getEmployees()]);
+  const clientsById = new Map(clients.map((client) => [client.id, client]));
+  const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const filterKey = typeof sp.filter === "string" ? sp.filter : "all";
   const filter = FILTERS.find((f) => f.key === filterKey) ?? FILTERS[0];
 
   const rows = tickets
-    .filter((t) => filter.test(t) && (!q || searchText(t).includes(q.toLowerCase())))
+    .filter((t) => {
+      const crew = [t.ownerId, ...t.participantIds].map((id) => employeesById.get(id)?.name ?? id).join(" ");
+      const searchable = `${t.id} ${t.jobId} ${t.title} ${clientsById.get(t.clientId)?.name ?? ""} ${t.category} ${crew}`.toLowerCase();
+      return filter.test(t) && (!q || searchable.includes(q.toLowerCase()));
+    })
     .sort((a, b) => urgency(b) - urgency(a));
 
   const hrefFor = (key: string) => {
@@ -131,7 +131,7 @@ export default async function AdminTicketsPage({ searchParams }: PageProps<"/adm
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((t) => {
-                const holder = getEmployee(t.ownerId)!;
+                const holder = employeesById.get(t.ownerId)!;
                 const progress = ticketProgress(t);
                 return (
                   <tr key={t.id} className="hover:bg-slate-50 transition-colors">
@@ -145,7 +145,7 @@ export default async function AdminTicketsPage({ searchParams }: PageProps<"/adm
                       <Link href={`/admin/tickets/${t.id}`} className="font-bold text-slate-900 hover:text-safety-orange line-clamp-1">
                         {t.title}
                       </Link>
-                      <div className="text-[11px] text-slate-500 font-label-mono">{getClient(t.clientId)?.name}</div>
+                      <div className="text-[11px] text-slate-500 font-label-mono">{clientsById.get(t.clientId)?.name}</div>
                     </td>
                     <td className="px-4 py-3 align-top">
                       <div className="flex items-center gap-2">

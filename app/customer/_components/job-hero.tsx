@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { customerJobUrl, formatDate, getClient, isOverdue, remainingLabel, statusLabel, ticketProgress } from "@/lib/tickets";
+import { getClient } from "@/lib/db-data";
+import { customerJobUrl, formatDate, isOverdue, remainingLabel, statusLabel, ticketProgress } from "@/lib/tickets";
 import type { Ticket } from "@/lib/types";
 
 /** "Hero Work Order Dossier" card from the customer sample. */
-export function JobHero({ job, compact = false }: { job: Ticket; compact?: boolean }) {
-  const client = getClient(job.clientId)!;
+export async function JobHero({ job, compact = false }: { job: Ticket; compact?: boolean }) {
+  const client = (await getClient(job.clientId))!;
   const overdue = isOverdue(job);
   const done = job.status === "completed";
   const progress = ticketProgress(job);

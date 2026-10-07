@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { currentEmployeeId } from "@/lib/data";
-import { getEmployee, ticketsForEmployee } from "@/lib/tickets";
+import { currentEmployeeId, getEmployee } from "@/lib/db-data";
+import { ticketsForEmployee } from "@/lib/tickets";
 import { Card, CardHeader, StatusBadge } from "./ui";
 
 /** "My Recent Dispatches" card from the employee sample. */
-export function RecentTicketsCard({ limit = 5 }: { limit?: number }) {
-  const me = getEmployee(currentEmployeeId)!;
-  const recent = [...ticketsForEmployee(me.id)]
+export async function RecentTicketsCard({ limit = 5 }: { limit?: number }) {
+  const me = (await getEmployee(currentEmployeeId))!;
+  const recent = [...(await ticketsForEmployee(me.id))]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, limit);
 

@@ -1,4 +1,4 @@
-import { tickets } from "@/lib/data";
+import { getTickets } from "@/lib/db-data";
 import type { Ticket } from "@/lib/types";
 import type { TicketDraft } from "./ticket-wizard";
 
@@ -37,7 +37,8 @@ export function ticketToDraft(ticket: Ticket): TicketDraft {
 }
 
 /** The id the next created ticket will receive (mock sequence). */
-export function nextTicketId() {
+export async function nextTicketId() {
+  const tickets = await getTickets();
   const max = Math.max(...tickets.map((t) => Number(t.id.replace("TKT-", ""))));
   return `TKT-${max + 1}`;
 }

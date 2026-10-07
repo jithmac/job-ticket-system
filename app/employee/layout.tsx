@@ -3,8 +3,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { NavLink } from "@/components/nav-link";
-import { currentEmployeeId } from "@/lib/data";
-import { getEmployee } from "@/lib/tickets";
+import { currentEmployeeId, getEmployee } from "@/lib/db-data";
 import { EmployeeMobileNav } from "./_components/mobile-nav";
 import { employeeNav } from "./_components/nav-items";
 
@@ -16,8 +15,8 @@ export const metadata: Metadata = {
  * Shared shell for every /employee/* route. Next.js keeps this layout mounted
  * while navigating between child pages, so only the <main> content swaps.
  */
-export default function EmployeeLayout({ children }: LayoutProps<"/employee">) {
-  const me = getEmployee(currentEmployeeId)!;
+export default async function EmployeeLayout({ children }: LayoutProps<"/employee">) {
+  const me = (await getEmployee(currentEmployeeId))!;
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen flex flex-col font-body-md">

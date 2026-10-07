@@ -1,7 +1,7 @@
 import type { Billing, Employee, Priority, Subtask, Ticket, TicketStatus } from "./types";
 
-/** "Today" for the mock data, so countdowns render the same on server and client. */
-export const REFERENCE_DATE = "2026-10-04T12:00:00";
+/** The current time used for SLA countdowns and progress reports. */
+export const REFERENCE_DATE = new Date().toISOString();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

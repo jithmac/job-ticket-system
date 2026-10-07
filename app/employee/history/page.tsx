@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { currentEmployeeId } from "@/lib/data";
+import { currentEmployeeId, getClients, getEmployees } from "@/lib/db-data";
 import { formatDate, getClient, getEmployee, ticketsForEmployee } from "@/lib/tickets";
 import { Card, CardHeader, PageHeader, PriorityBadge, StatusBadge } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Previous Tickets" };
 
-export default function HistoryPage() {
-  const previous = ticketsForEmployee(currentEmployeeId)
+export default async function HistoryPage() {
+  const [clients, employees] = await Promise.all([getClients(), getEmployees()]);
+  const clientsById = new Map(clients.map((client) => [client.id, client]));
+  const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
+  const previous = (await ticketsForEmployee(currentEmployeeId))
     .filter((t) => t.status === "completed")
     .sort((a, b) => b.endDate.localeCompare(a.endDate));
 
@@ -45,7 +48,7 @@ export default function HistoryPage() {
                     </div>
                     <p className="text-sm font-semibold text-on-surface line-clamp-1">{t.title}</p>
                     <p className="text-[11px] font-label-mono text-on-surface-variant">
-                      {getClient(t.clientId)?.name} • Held by {getEmployee(t.ownerId)?.name} • {done}/{t.subtasks.length}{" "}
+                      {clientsById.get(t.clientId)?.name} • Held by {employeesById.get(t.ownerId)?.name} • {done}/{t.subtasks.length}{" "}
                       subtasks
                     </p>
                   </div>

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { categories, clients, employees, tickets } from "@/lib/data";
-import { getEmployee, getTicket } from "@/lib/tickets";
+import { categories, getClients, getEmployee, getEmployees, getTicket, getTickets } from "@/lib/db-data";
 import { ticketToDraft } from "../../../_components/draft";
 import { RecentTicketsCard } from "../../../_components/recent-tickets-card";
 import { TicketWizard } from "../../../_components/ticket-wizard";
 import { PageHeader, SlaPolicyBanner } from "../../../_components/ui";
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const tickets = await getTickets();
   return tickets.map((t) => ({ ticketId: t.id }));
 }
 
@@ -18,9 +18,9 @@ export async function generateMetadata({ params }: PageProps<"/employee/tickets/
 
 export default async function EditTicketPage({ params }: PageProps<"/employee/tickets/[ticketId]/edit">) {
   const { ticketId } = await params;
-  const ticket = getTicket(ticketId);
+  const ticket = await getTicket(ticketId);
   if (!ticket) notFound();
-  const creator = getEmployee(ticket.createdById)!;
+  const [creator, employees, clients] = await Promise.all([getEmployee(ticket.createdById), getEmployees(), getClients()]);
 
   return (
     <>
@@ -37,7 +37,7 @@ export default async function EditTicketPage({ params }: PageProps<"/employee/ti
       <TicketWizard
         mode="edit"
         ticketId={ticket.id}
-        owner={creator}
+        owner={creator!}
         employees={employees}
         clients={clients}
         categories={categories}

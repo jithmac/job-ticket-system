@@ -1,13 +1,12 @@
 import {
   activeSubtaskIndex,
   daysRemaining,
-  getClient,
-  getEmployee,
   isOverdue,
   ticketCrew,
   ticketProgress,
   urgency,
 } from "@/lib/tickets";
+import { getClient, getEmployee } from "@/lib/db-data";
 import type { Priority, Ticket } from "@/lib/types";
 
 /** Plain, serialisable summary of a ticket for the customer care stream. */
@@ -33,13 +32,12 @@ export interface CareRow {
   search: string;
 }
 
-export function careRow(t: Ticket): CareRow {
+export async function careRow(t: Ticket): Promise<CareRow> {
   const progress = ticketProgress(t);
   const days = daysRemaining(t);
   const overdue = isOverdue(t);
   const idx = activeSubtaskIndex(t);
-  const owner = getEmployee(t.ownerId);
-  const crew = ticketCrew(t);
+  const [owner, crew, client] = await Promise.all([getEmployee(t.ownerId), ticketCrew(t), getClient(t.clientId)]);
   const completed = t.status === "completed";
 
   return {
@@ -48,7 +46,7 @@ export function careRow(t: Ticket): CareRow {
     assetTag: t.assetTag,
     title: t.title,
     priority: t.priority,
-    client: getClient(t.clientId)?.name ?? "—",
+    client: client?.name ?? "—",
     slaLabel: completed ? "Delivered" : overdue ? "OVERDUE SLA" : days <= 3 ? `${Math.max(days, 0) * 24}h SLA Remaining` : `SLA: ${days * 24}h`,
     slaTone: completed ? "muted" : overdue ? "bad" : days <= 3 ? "warn" : "ok",
     phaseLabel:
@@ -78,7 +76,7 @@ export function careRow(t: Ticket): CareRow {
       field: t.status === "in_progress",
       completed,
     },
-    search: [t.id, t.jobId, t.title, t.assetTag, getClient(t.clientId)?.name, ...crew.flatMap((e) => [e.name, e.id])]
+    search: [t.id, t.jobId, t.title, t.assetTag, client?.name, ...crew.flatMap((e) => [e.name, e.id])]
       .join(" ")
       .toLowerCase(),
   };

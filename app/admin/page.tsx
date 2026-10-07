@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
-import { adminUser, clients, employees, tickets } from "@/lib/data";
+import { getAdminUser, getClients, getEmployees, getTickets } from "@/lib/db-data";
 import {
   employeeStatusLabel,
   formatDateTime,
@@ -18,7 +18,10 @@ import { PageTitle, PanelTitle, PhaseGrid, PriorityPill, StatCard, StatusPill } 
 
 export const metadata: Metadata = { title: "Overview" };
 
-export default function AdminOverviewPage() {
+export default async function AdminOverviewPage() {
+  const [adminUser, clients, employees, tickets] = await Promise.all([getAdminUser(), getClients(), getEmployees(), getTickets()]);
+  const clientsById = new Map(clients.map((client) => [client.id, client]));
+  const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
   const active = tickets.filter((t) => t.status !== "completed").sort((a, b) => urgency(b) - urgency(a));
   const focus = active[0];
   const pendingRequests = tickets.flatMap((t) => t.priorityRequests.map((r) => ({ t, r })));
@@ -93,7 +96,7 @@ export default function AdminOverviewPage() {
                 <span className="font-bold text-slate-900">{focus.title}</span>
                 <PriorityPill priority={focus.priority} />
                 <span className="font-label-mono text-slate-500">
-                  {getClient(focus.clientId)?.name} • {remainingLabel(focus)}
+                  {clientsById.get(focus.clientId)?.name} • {remainingLabel(focus)}
                 </span>
               </div>
               <PhaseGrid subtasks={focus.subtasks} />
@@ -113,7 +116,7 @@ export default function AdminOverviewPage() {
             <div className="flex flex-col divide-y divide-slate-100">
               {active.map((t) => {
                 const p = ticketProgress(t);
-                const holder = getEmployee(t.ownerId)!;
+                const holder = employeesById.get(t.ownerId)!;
                 return (
                   <Link key={t.id} href={`/admin/tickets/${t.id}`} className="py-3 flex flex-col md:flex-row md:items-center gap-3 hover:bg-slate-50 -mx-2 px-2 rounded">
                     <div className="flex-1 min-w-0">
@@ -123,7 +126,7 @@ export default function AdminOverviewPage() {
                       </div>
                       <div className="text-xs font-bold text-slate-900 truncate">{t.title}</div>
                       <div className="text-[10px] font-label-mono text-slate-500">
-                        {getClient(t.clientId)?.name} • Holder: {holder.name} • {priorityLabel[t.priority]}
+                        {clientsById.get(t.clientId)?.name} • Holder: {holder.name} • {priorityLabel[t.priority]}
                       </div>
                     </div>
                     <div className="md:w-48">
