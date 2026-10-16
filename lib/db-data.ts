@@ -4,8 +4,10 @@
 
 
 import { Prisma, UserRole } from "@prisma/client";
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import { db } from "@/lib/db";
-import type { Attachment, Client, Employee, Ticket } from "@/lib/types";
+import type { Attachment, Client, Employee, EmployeeDashboardTicket, Ticket } from "@/lib/types";
 
 export const currentEmployeeId = "EMP-402";
 export const currentClientId = "CL-1001";
@@ -22,13 +24,44 @@ const ticketInclude = {
   customer: true,
 } satisfies Prisma.TicketInclude;
 
-type DbTicket = Prisma.TicketGetPayload<{ include: typeof ticketInclude }>;
+const relationLoadStrategy = "join" as const;
 
-function date(value: Date | null | undefined) {
-  return value ? value.toISOString() : "";
+const employeeSelect = {
+  id: true,
+  name: true,
+  email: true,
+  phone: true,
+  role: true,
+  title: true,
+  department: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
+
+const clientSelect = {
+  id: true,
+  name: true,
+  facility: true,
+  address: true,
+  contractRef: true,
+  tier: true,
+  contactName: true,
+  contactRole: true,
+  contactEmail: true,
+  contactPhone: true,
+  accessLevel: true,
+  safetyProtocol: true,
+} satisfies Prisma.CustomerSelect;
+
+type DbTicket = Prisma.TicketGetPayload<{ include: typeof ticketInclude }>;
+type EmployeeUser = Prisma.UserGetPayload<{ select: typeof employeeSelect }>;
+type ClientRecord = Prisma.CustomerGetPayload<{ select: typeof clientSelect }>;
+
+function date(value: Date | string | null | undefined) {
+  if (!value) return "";
+  return typeof value === "string" ? value : value.toISOString();
 }
 
-function employee(user: DbTicket["crew"][number]["user"]): Employee {
+function employee(user: EmployeeUser): Employee {
   return {
     id: user.id,
     name: user.name,
@@ -44,7 +77,7 @@ function employee(user: DbTicket["crew"][number]["user"]): Employee {
   };
 }
 
-function client(customer: DbTicket["customer"]): Client {
+function client(customer: ClientRecord): Client {
   return {
     id: customer.id,
     name: customer.name,
@@ -136,66 +169,223 @@ function mapTicket(ticket: DbTicket): Ticket {
 }
 
 export async function getEmployees(): Promise<Employee[]> {
-  const users = await db.user.findMany({ where: { role: UserRole.EMPLOYEE }, orderBy: { name: "asc" } });
+  const users = await getEmployeesCached();
   return users.map(employee);
 }
 
-export async function getEmployee(id: string) {
-  const user = await db.user.findUnique({ where: { id } });
+const getEmployeesCached = unstable_cache(
+  async () => db.user.findMany({ where: { role: UserRole.EMPLOYEE }, orderBy: { name: "asc" }, select: employeeSelect }),
+  ["employees"],
+  { revalidate: 60, tags: ["employees"] },
+);
+
+const getEmployeeCached = unstable_cache(
+  async (id: string) => db.user.findUnique({ where: { id }, select: employeeSelect }),
+  ["employee"],
+  { revalidate: 60, tags: ["employees"] },
+);
+
+export const getEmployee = cache(async (id: string) => {
+  const user = await getEmployeeCached(id);
   return user && user.role === UserRole.EMPLOYEE ? employee(user) : undefined;
-}
+});
 
 export async function getClients(): Promise<Client[]> {
-  const customers = await db.customer.findMany({ orderBy: { name: "asc" } });
-  return customers.map((item) => client(item as DbTicket["customer"]));
+  const customers = await getClientsCached();
+  return customers.map(client);
 }
 
+const getClientsCached = unstable_cache(
+  async () => db.customer.findMany({ orderBy: { name: "asc" }, select: clientSelect }),
+  ["clients"],
+  { revalidate: 60, tags: ["clients"] },
+);
+
 export async function getClient(id: string) {
-  const item = await db.customer.findUnique({ where: { id } });
+  const item = await getClientCached(id);
   return item ? client(item) : undefined;
 }
 
+const getClientCached = unstable_cache(
+  async (id: string) => db.customer.findUnique({ where: { id }, select: clientSelect }),
+  ["client"],
+  { revalidate: 60, tags: ["clients"] },
+);
+
 export async function getTickets(): Promise<Ticket[]> {
-  const rows = await db.ticket.findMany({ include: ticketInclude, orderBy: { updatedAt: "desc" } });
-  return rows.map(mapTicket);
+  return getTicketsCached();
 }
 
-export async function getTicket(id: string) {
-  const row = await db.ticket.findUnique({ where: { id }, include: ticketInclude });
-  return row ? mapTicket(row) : undefined;
-}
+const getTicketsCached = unstable_cache(
+  async () => {
+    const rows = await db.ticket.findMany({ relationLoadStrategy, include: ticketInclude, orderBy: { updatedAt: "desc" } });
+    return rows.map(mapTicket);
+  },
+  ["tickets"],
+  { revalidate: 30, tags: ["tickets"] },
+);
 
-export async function getTicketByJobId(jobId: string) {
-  const row = await db.ticket.findUnique({ where: { jobId }, include: ticketInclude });
-  return row ? mapTicket(row) : undefined;
-}
+const getTicketCached = unstable_cache(
+  async (id: string) => {
+    const row = await db.ticket.findUnique({ where: { id }, relationLoadStrategy, include: ticketInclude });
+    return row ? mapTicket(row) : undefined;
+  },
+  ["ticket"],
+  { revalidate: 30, tags: ["tickets"] },
+);
 
-export async function getTicketByPublicToken(publicToken: string) {
-  const row = await db.ticket.findUnique({ where: { publicToken }, include: ticketInclude });
-  return row ? mapTicket(row) : undefined;
-}
+export const getTicket = cache(async (id: string) => {
+  const row = await getTicketCached(id);
+  return row;
+});
 
-export async function getTicketsForEmployee(employeeId: string) {
-  const rows = await db.ticket.findMany({
-    where: { OR: [{ ownerId: employeeId }, { createdById: employeeId }, { crew: { some: { userId: employeeId } } }] },
-    include: ticketInclude,
-    orderBy: { updatedAt: "desc" },
-  });
-  return rows.map(mapTicket);
-}
+const getTicketByJobIdCached = unstable_cache(
+  async (jobId: string) => {
+    const row = await db.ticket.findUnique({ where: { jobId }, relationLoadStrategy, include: ticketInclude });
+    return row ? mapTicket(row) : undefined;
+  },
+  ["ticket-by-job-id"],
+  { revalidate: 30, tags: ["tickets"] },
+);
 
-export async function getTicketsForClient(clientId: string) {
-  const rows = await db.ticket.findMany({ where: { customerId: clientId }, include: ticketInclude, orderBy: { endDate: "asc" } });
-  return rows.map(mapTicket);
-}
+export const getTicketByJobId = cache((jobId: string) => getTicketByJobIdCached(jobId));
+
+const getTicketByPublicTokenCached = unstable_cache(
+  async (publicToken: string) => {
+    const row = await db.ticket.findUnique({ where: { publicToken }, relationLoadStrategy, include: ticketInclude });
+    return row ? mapTicket(row) : undefined;
+  },
+  ["ticket-by-public-token"],
+  { revalidate: 30, tags: ["tickets"] },
+);
+
+export const getTicketByPublicToken = cache((publicToken: string) => getTicketByPublicTokenCached(publicToken));
+
+const getTicketsForEmployeeCached = unstable_cache(
+  async (employeeId: string) => {
+    const rows = await db.ticket.findMany({
+      where: { OR: [{ ownerId: employeeId }, { createdById: employeeId }, { crew: { some: { userId: employeeId } } }] },
+      relationLoadStrategy,
+      include: ticketInclude,
+      orderBy: { updatedAt: "desc" },
+    });
+    return rows.map(mapTicket);
+  },
+  ["employee-tickets"],
+  { revalidate: 30, tags: ["tickets"] },
+);
+
+export const getTicketsForEmployee = cache((employeeId: string) => getTicketsForEmployeeCached(employeeId));
+
+const getEmployeeDashboardCached = unstable_cache(
+  async (employeeId: string): Promise<EmployeeDashboardTicket[]> => {
+    const rows = await db.ticket.findMany({
+      where: { OR: [{ ownerId: employeeId }, { createdById: employeeId }, { crew: { some: { userId: employeeId } } }] },
+      relationLoadStrategy,
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        jobId: true,
+        title: true,
+        customerId: true,
+        createdById: true,
+        ownerId: true,
+        startDate: true,
+        endDate: true,
+        priority: true,
+        status: true,
+        updatedAt: true,
+        customer: { select: { name: true } },
+        subtasks: {
+          select: {
+            id: true,
+            title: true,
+            estimate: true,
+            status: true,
+            progress: true,
+            assignees: { where: { userId: employeeId }, select: { userId: true } },
+          },
+        },
+        activities: {
+          where: { kind: "CUSTOMER_CARE", visibleToEmployees: true },
+          select: { id: true, kind: true, authorName: true, at: true, text: true, visibleToEmployees: true },
+          orderBy: { at: "desc" },
+        },
+      },
+    });
+
+    return rows.map((ticket) => ({
+      id: ticket.id,
+      jobId: ticket.jobId,
+      title: ticket.title,
+      clientId: ticket.customerId,
+      clientName: ticket.customer.name,
+      createdById: ticket.createdById,
+      ownerId: ticket.ownerId,
+      startDate: date(ticket.startDate),
+      endDate: date(ticket.endDate),
+      priority: ticket.priority.toLowerCase() as EmployeeDashboardTicket["priority"],
+      status: ticket.status.toLowerCase() as EmployeeDashboardTicket["status"],
+      subtasks: ticket.subtasks.map((subtask) => ({
+        id: subtask.id,
+        title: subtask.title,
+        estimate: subtask.estimate,
+        status: subtask.status.toLowerCase() as EmployeeDashboardTicket["subtasks"][number]["status"],
+        progress: subtask.progress,
+        assigneeIds: subtask.assignees.map((assignee) => assignee.userId),
+      })),
+      activity: ticket.activities.map((activity) => ({
+        id: activity.id,
+        kind: activity.kind.toLowerCase().replace("_", "-") as EmployeeDashboardTicket["activity"][number]["kind"],
+        authorName: activity.authorName,
+        at: date(activity.at),
+        text: activity.text,
+        visibleToEmployees: activity.visibleToEmployees,
+      })),
+      updatedAt: date(ticket.updatedAt),
+    }));
+  },
+  ["employee-dashboard"],
+  { revalidate: 30, tags: ["tickets"] },
+);
+
+export const getEmployeeDashboard = cache((employeeId: string) => getEmployeeDashboardCached(employeeId));
+
+const getTicketsForClientCached = unstable_cache(
+  async (clientId: string) => {
+    const rows = await db.ticket.findMany({
+      where: { customerId: clientId },
+      relationLoadStrategy,
+      include: ticketInclude,
+      orderBy: { endDate: "asc" },
+    });
+    return rows.map(mapTicket);
+  },
+  ["client-tickets"],
+  { revalidate: 30, tags: ["tickets"] },
+);
+
+export const getTicketsForClient = cache((clientId: string) => getTicketsForClientCached(clientId));
+
+const getCareAgentCached = unstable_cache(
+  async () => db.user.findUnique({ where: { id: careAgentId }, select: { name: true, title: true } }),
+  ["care-agent"],
+  { revalidate: 60, tags: ["employees"] },
+);
 
 export async function getCareAgent() {
-  const user = await db.user.findUnique({ where: { id: careAgentId } });
+  const user = await getCareAgentCached();
   return { id: careAgentId, name: user?.name ?? "Customer Care", role: user?.title ?? "Customer Care Dispatcher" };
 }
 
+const getAdminUserCached = unstable_cache(
+  async () => db.user.findUnique({ where: { id: adminUserId }, select: { name: true, title: true } }),
+  ["admin-user"],
+  { revalidate: 60, tags: ["employees"] },
+);
+
 export async function getAdminUser() {
-  const user = await db.user.findUnique({ where: { id: adminUserId } });
+  const user = await getAdminUserCached();
   return { name: user?.name ?? "Administrator", role: user?.title ?? "Operations Lead", avatarUrl: "" };
 }
 

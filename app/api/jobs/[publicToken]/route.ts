@@ -5,6 +5,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ publicToke
   const { publicToken } = await params;
   const ticket = await db.ticket.findUnique({
     where: { publicToken },
+    relationLoadStrategy: "join",
     select: {
       jobId: true,
       title: true,

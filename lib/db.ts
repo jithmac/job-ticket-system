@@ -1,13 +1,20 @@
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+type PrismaWithQueryLogging = PrismaClient<{
+  log: [{ emit: "event"; level: "query" }, "error", "warn"];
+}>;
 
-export const db =
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaWithQueryLogging };
+
+export const db: PrismaWithQueryLogging =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: [{ emit: "event", level: "query" }, "error", "warn"],
   });
 
 if (process.env.NODE_ENV !== "production") {
+  db.$on("query", (event) => {
+    console.log(`[db query ${event.duration}ms] ${event.query}`, event.params);
+  });
   globalForPrisma.prisma = db;
 }

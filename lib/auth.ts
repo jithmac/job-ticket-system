@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import { UserRole } from "@prisma/client";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { db } from "@/lib/db";
 
 const scryptAsync = promisify(scrypt);
@@ -76,7 +77,7 @@ export async function clearSession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const value = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!value) return null;
   const session = decodeSession(value);
@@ -87,7 +88,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   });
   if (!user || !user.passwordHash || user.email.toLowerCase() !== session.email.toLowerCase()) return null;
   return { id: user.id, name: user.name, email: user.email, role: user.role };
-}
+});
 
 export async function requireRole(roles: UserRole[]) {
   const user = await getSessionUser();
@@ -101,4 +102,3 @@ export function roleForWorkspace(value: string | null) {
   if (value === "customer-care") return UserRole.CARE;
   return UserRole.EMPLOYEE;
 }
-

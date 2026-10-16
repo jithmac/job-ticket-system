@@ -131,3 +131,20 @@ export interface Ticket {
   billing?: Billing;
   updatedAt: string;
 }
+
+export interface EmployeeDashboardTicket {
+  id: string;
+  jobId: string;
+  title: string;
+  clientId: string;
+  clientName: string;
+  createdById: string;
+  ownerId: string;
+  startDate: string;
+  endDate: string;
+  priority: Priority;
+  status: TicketStatus;
+  subtasks: Array<Pick<Subtask, "id" | "title" | "estimate" | "status" | "progress"> & { assigneeIds: string[] }>;
+  activity: Pick<ActivityEntry, "id" | "kind" | "authorName" | "at" | "text" | "visibleToEmployees">[];
+  updatedAt: string;
+}

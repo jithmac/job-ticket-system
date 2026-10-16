@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link"; // use to navigate
 import { Icon } from "@/components/icon";
-import { getClients, getEmployee } from "@/lib/db-data";
+import { getEmployee, getEmployeeDashboard } from "@/lib/db-data";
 import { requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import {
@@ -10,7 +10,6 @@ import {
   formatDateTime,
   remainingLabel,
   ticketProgress,
-  ticketsForEmployee,
   urgency,
 } from "@/lib/tickets";
 import { RecentTicketsCard } from "./_components/recent-tickets-card";
@@ -21,9 +20,7 @@ export const metadata: Metadata = { title: "Overview" };
 export default async function EmployeeOverviewPage() {
   const session = await requireRole([UserRole.EMPLOYEE]);
   const me = (await getEmployee(session.id))!;
-  const mine = await ticketsForEmployee(me.id);
-  const clients = await getClients();
-  const clientsById = new Map(clients.map((client) => [client.id, client]));
+  const mine = await getEmployeeDashboard(me.id);
   const active = mine.filter((t) => t.status !== "completed").sort((a, b) => urgency(b) - urgency(a));
   const mySubtasks = active.flatMap((t) =>
     t.subtasks.filter((s) => s.status !== "done" && s.assigneeIds.includes(me.id)).map((s) => ({ ticket: t, subtask: s })),
@@ -104,7 +101,7 @@ export default async function EmployeeOverviewPage() {
                     </div>
                     <p className="text-sm font-semibold text-on-surface line-clamp-1">{t.title}</p>
                     <p className="text-[11px] font-label-mono text-on-surface-variant mb-2.5">
-                      {clientsById.get(t.clientId)?.name} • Ends {formatDate(t.endDate)} • {remainingLabel(t)}
+                      {t.clientName} • Ends {formatDate(t.endDate)} • {remainingLabel(t)}
                     </p>
                     <div className="flex items-center gap-2">
                       <ProgressBar value={progress} />

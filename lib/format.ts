@@ -7,13 +7,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /* --------------------------------------------------------------- progress */
 
-export function subtaskProgress(subtask: Subtask) {
+export function subtaskProgress(subtask: Pick<Subtask, "status" | "progress">) {
   if (subtask.status === "done") return 100;
   if (subtask.status === "pending") return 0;
   return subtask.progress;
 }
 
-export function ticketProgress(ticket: Pick<Ticket, "subtasks">) {
+export function ticketProgress(ticket: { subtasks: Array<Pick<Subtask, "status" | "progress">> }) {
   if (ticket.subtasks.length === 0) return 0;
   const total = ticket.subtasks.reduce((sum, s) => sum + subtaskProgress(s), 0);
   return Math.round(total / ticket.subtasks.length);
@@ -35,7 +35,7 @@ export function isOverdue(ticket: Ticket) {
   return ticket.status !== "completed" && daysRemaining(ticket) < 0;
 }
 
-export function remainingLabel(ticket: Ticket) {
+export function remainingLabel(ticket: Pick<Ticket, "status" | "endDate">) {
   if (ticket.status === "completed") return "Completed";
   const days = daysRemaining(ticket);
   if (days < 0) return `Overdue by ${Math.abs(days)}d`;
@@ -109,7 +109,7 @@ export function phaseLabel(index: number) {
 }
 
 /** Urgency score used to sort desks/queues. */
-export function urgency(ticket: Ticket) {
+export function urgency(ticket: Pick<Ticket, "status" | "priority" | "endDate">) {
   if (ticket.status === "completed") return -1;
   return priorityOrder.indexOf(ticket.priority) * 100 - daysRemaining(ticket);
 }
