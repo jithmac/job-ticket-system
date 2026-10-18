@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { categories, getClients, getEmployee, getEmployees, getTicket, getTickets } from "@/lib/db-data";
+import { categories, getEmployee, getLiveTicketWizardOptions, getTicket, getTickets } from "@/lib/db-data";
 import { requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { ticketToDraft } from "../../../_components/draft";
@@ -26,7 +26,8 @@ export default async function EditTicketPage({ params }: PageProps<"/employee/ti
   if (ticket.ownerId !== session.id && ticket.createdById !== session.id && !ticket.participantIds.includes(session.id)) {
     redirect("/employee/tickets");
   }
-  const [creator, employees, clients] = await Promise.all([getEmployee(ticket.createdById), getEmployees(), getClients()]);
+  const creator = await getEmployee(ticket.createdById);
+  const { clients, employees } = await getLiveTicketWizardOptions();
 
   return (
     <>

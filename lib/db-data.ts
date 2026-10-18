@@ -195,6 +195,14 @@ export async function getClients(): Promise<Client[]> {
   return customers.map(client);
 }
 
+export async function getLiveTicketWizardOptions(): Promise<{ clients: Client[]; employees: Employee[] }> {
+  const customers = await db.customer.findMany({ orderBy: { name: "asc" }, select: clientSelect });
+  if (customers.length === 0) throw new Error("No customers are available for ticket creation.");
+
+  const users = await db.user.findMany({ where: { role: UserRole.EMPLOYEE }, orderBy: { name: "asc" }, select: employeeSelect });
+  return { clients: customers.map(client), employees: users.map(employee) };
+}
+
 const getClientsCached = unstable_cache(
   async () => db.customer.findMany({ orderBy: { name: "asc" }, select: clientSelect }),
   ["clients"],

@@ -111,6 +111,12 @@ model Ticket {
   updatedAt        DateTime          @updatedAt
 }
 
+model TicketNumberSequence {
+  id               Int @id @default(1)
+  nextTicketNumber Int
+  nextJobNumber    Int
+}
+
 model TicketCrew {
   ticketId String
   userId   String

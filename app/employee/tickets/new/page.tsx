@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { categories, getClients, getEmployee, getEmployees } from "@/lib/db-data";
+import { categories, getEmployee, getLiveTicketWizardOptions } from "@/lib/db-data";
 import { requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { emptyDraft, nextTicketId } from "../../_components/draft";
@@ -11,12 +11,9 @@ export const metadata: Metadata = { title: "New Ticket" };
 
 export default async function NewTicketPage() {
   const session = await requireRole([UserRole.EMPLOYEE]);
-  const [me, employees, clients, ticketId] = await Promise.all([
-    getEmployee(session.id),
-    getEmployees(),
-    getClients(),
-    nextTicketId(),
-  ]);
+  const me = await getEmployee(session.id);
+  const { clients, employees } = await getLiveTicketWizardOptions();
+  const ticketId = await nextTicketId();
 
   return (
     <>

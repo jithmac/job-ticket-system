@@ -1,4 +1,5 @@
-import { getTickets } from "@/lib/db-data";
+import { db } from "@/lib/db";
+import { peekNextTicketIdentifiers } from "@/lib/ticket-identifiers";
 import type { Ticket } from "@/lib/types";
 import type { TicketDraft } from "./ticket-wizard";
 
@@ -36,9 +37,7 @@ export function ticketToDraft(ticket: Ticket): TicketDraft {
   };
 }
 
-/** The id the next created ticket will receive (mock sequence). */
 export async function nextTicketId() {
-  const tickets = await getTickets();
-  const max = Math.max(...tickets.map((t) => Number(t.id.replace("TKT-", ""))));
-  return `TKT-${max + 1}`;
+  const { ticketId } = await peekNextTicketIdentifiers(db);
+  return ticketId;
 }
