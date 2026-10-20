@@ -57,7 +57,6 @@ function validateInput(input: TicketMutationInput) {
     throw new Error("Add at least one subtask with a title.");
   }
   if (input.participantIds.length === 0) throw new Error("Assign at least one participating employee.");
-  if (input.attachments.length === 0) throw new Error("Attach at least one supporting file.");
 }
 
 export async function saveEmployeeTicket(input: TicketMutationInput): Promise<TicketMutationResult> {

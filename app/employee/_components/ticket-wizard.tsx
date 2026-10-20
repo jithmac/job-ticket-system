@@ -68,7 +68,7 @@ const STEPS = [
     title: "Personnel & Attachments",
     icon: "engineering",
     heading: "Crew Assignment & Supporting Files",
-    blurb: "Select the employees who will participate in this job and attach drawings, photos or logs.",
+    blurb: "Select the employees who will participate in this job and optionally attach drawings, photos or logs.",
   },
   {
     short: "Review & Dispatch",
@@ -99,7 +99,6 @@ function stepChecks(draft: TicketDraft, confirmed: boolean): Check[][] {
     ],
     [
       { label: "At least one participating employee", ok: draft.participantIds.length > 0 },
-      { label: "At least one attachment", ok: draft.attachments.length > 0 },
     ],
     [{ label: "Details confirmed by ticket owner", ok: confirmed }],
   ];
@@ -794,7 +793,7 @@ export function TicketWizard({
                 <div className="flex items-center justify-between border-b border-slate-border pb-2.5">
                   <span className="font-label-mono text-xs uppercase tracking-wider font-semibold text-slate-dark flex items-center gap-1">
                     <Icon name="attach_file" className="text-sm text-safety-orange" />
-                    Attachments <span className="text-safety-orange font-bold">*</span>
+                    Attachments <span className="text-outline font-normal normal-case tracking-normal">(optional)</span>
                   </span>
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-slate-100 text-slate-dark border border-slate-border">
                     {draft.attachments.length} Files
@@ -837,7 +836,6 @@ export function TicketWizard({
                     }}
                   />
                 </div>
-                <ErrorText show={errorsOn && !checks[2][1].ok}>Attach at least one supporting file.</ErrorText>
                 {draft.attachments.length > 0 && (
                   <ul className="flex flex-col gap-2">
                     {draft.attachments.map((a) => (
