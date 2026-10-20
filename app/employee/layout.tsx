@@ -3,8 +3,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { NavLink } from "@/components/nav-link";
-import { getEmployee } from "@/lib/db-data";
-import { requireRole } from "@/lib/auth";
+import { employeeFromSession, requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { EmployeeMobileNav } from "./_components/mobile-nav";
 import { employeeNav } from "./_components/nav-items";
@@ -19,7 +18,7 @@ export const metadata: Metadata = {
  */
 export default async function EmployeeLayout({ children }: LayoutProps<"/employee">) {
   const session = await requireRole([UserRole.EMPLOYEE]);
-  const me = (await getEmployee(session.id))!;
+  const me = employeeFromSession(session);
 
   return (
     <div className="bg-surface text-on-surface antialiased min-h-screen flex flex-col font-body-md">

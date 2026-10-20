@@ -14,13 +14,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Enter a valid email and password." }, { status: 400 });
     }
 
-    const user = await db.user.findUnique({ where: { email }, select: { id: true, name: true, email: true, role: true, passwordHash: true } });
+    const user = await db.user.findUnique({
+      where: { email },
+      select: { id: true, name: true, email: true, role: true, passwordHash: true, phone: true, title: true, department: true, createdAt: true },
+    });
     const valid = user?.passwordHash ? await verifyPassword(password, user.passwordHash) : false;
     if (!user || !valid || user.role !== roleForWorkspace(workspace)) {
       return NextResponse.json({ error: "Invalid credentials or workspace access." }, { status: 401 });
     }
 
-    await createSession({ id: user.id, name: user.name, email: user.email, role: user.role });
+    await createSession({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      title: user.title,
+      department: user.department,
+      createdAt: user.createdAt.toISOString(),
+    });
     const destinations = { admin: "/admin", employee: "/employee", "customer-care": "/customer-care" };
     return NextResponse.json({ destination: destinations[workspace as keyof typeof destinations] ?? "/employee" });
   } catch (error) {
@@ -28,4 +40,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unable to sign in right now." }, { status: 500 });
   }
 }
-

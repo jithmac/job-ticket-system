@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { categories, getEmployee, getLiveTicketWizardOptions } from "@/lib/db-data";
-import { requireRole } from "@/lib/auth";
+import { categories, getLiveTicketWizardOptions } from "@/lib/db-data";
+import { employeeFromSession, requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { emptyDraft, nextTicketId } from "../../_components/draft";
 import { RecentTicketsCard } from "../../_components/recent-tickets-card";
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New Ticket" };
 
 export default async function NewTicketPage() {
   const session = await requireRole([UserRole.EMPLOYEE]);
-  const me = await getEmployee(session.id);
+  const me = employeeFromSession(session);
   const { clients, employees } = await getLiveTicketWizardOptions();
   const ticketId = await nextTicketId();
 
@@ -29,7 +29,7 @@ export default async function NewTicketPage() {
       <TicketWizard
         mode="create"
         ticketId={ticketId}
-        owner={me!}
+        owner={me}
         employees={employees}
         clients={clients}
         categories={categories}

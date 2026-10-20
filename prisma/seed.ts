@@ -143,8 +143,8 @@ async function main() {
     for (const participantId of [ticket.ownerId, ...ticket.participantIds]) {
       await db.ticketCrew.upsert({
         where: { ticketId_userId: { ticketId: ticket.id, userId: participantId } },
-        update: {},
-        create: { ticketId: ticket.id, userId: participantId },
+        update: { canOpen: participantId === ticket.ownerId },
+        create: { ticketId: ticket.id, userId: participantId, canOpen: participantId === ticket.ownerId },
       });
     }
 

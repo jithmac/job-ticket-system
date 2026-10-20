@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { getClient, getEmployee, getTicket, getTickets } from "@/lib/db-data";
-import { requireRole } from "@/lib/auth";
+import { getClient, getTicket, getTickets } from "@/lib/db-data";
+import { employeeFromSession, requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { customerJobUrl, ticketCrew } from "@/lib/tickets";
 import { TicketWorkspace } from "../../_components/ticket-workspace";
@@ -23,7 +23,11 @@ export default async function EmployeeTicketPage({ params }: PageProps<"/employe
   const { ticketId } = await params;
   const ticket = await getTicket(ticketId);
   if (!ticket) notFound();
-  if (ticket.ownerId !== session.id && ticket.createdById !== session.id && !ticket.participantIds.includes(session.id)) {
+  if (
+    ticket.ownerId !== session.id &&
+    ticket.createdById !== session.id &&
+    (!ticket.participantIds.includes(session.id) || ticket.pendingParticipantIds?.includes(session.id))
+  ) {
     redirect("/employee/tickets");
   }
 
@@ -49,7 +53,7 @@ export default async function EmployeeTicketPage({ params }: PageProps<"/employe
         ticket={ticket}
         crew={await ticketCrew(ticket)}
         client={(await getClient(ticket.clientId))!}
-        me={(await getEmployee(session.id))!}
+        me={employeeFromSession(session)}
         customerLink={customerJobUrl(ticket)}
       />
     </>

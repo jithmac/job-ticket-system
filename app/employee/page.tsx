@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link"; // use to navigate
 import { Icon } from "@/components/icon";
-import { getEmployee, getEmployeeDashboard } from "@/lib/db-data";
-import { requireRole } from "@/lib/auth";
+import { getEmployeeDashboard } from "@/lib/db-data";
+import { employeeFromSession, requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import {
   daysRemaining,
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Overview" };
 
 export default async function EmployeeOverviewPage() {
   const session = await requireRole([UserRole.EMPLOYEE]);
-  const me = (await getEmployee(session.id))!;
+  const me = employeeFromSession(session);
   const mine = await getEmployeeDashboard(me.id);
   const active = mine.filter((t) => t.status !== "completed").sort((a, b) => urgency(b) - urgency(a));
   const mySubtasks = active.flatMap((t) =>

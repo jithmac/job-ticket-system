@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { saveEmployeeTicketWorkspace, passEmployeeTicket } from "../actions";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import {
@@ -20,6 +21,10 @@ function nowIso() {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`;
+}
+
+function localActivityId(ticketId: string) {
+  return `${ticketId}-activity-${Date.now()}-${globalThis.crypto.randomUUID()}`;
 }
 
 const attachmentIcon: Record<Ticket["attachments"][number]["kind"], string> = {
@@ -44,61 +49,79 @@ export function TicketWorkspace({
   customerLink: string;
 }) {
   const [subtasks, setSubtasks] = useState<Subtask[]>(ticket.subtasks);
+  const [pendingSubtaskIds, setPendingSubtaskIds] = useState<string[]>([]);
   const [ownerId, setOwnerId] = useState(ticket.ownerId);
-  const [activity, setActivity] = useState<ActivityEntry[]>(ticket.activity.filter((a) => a.visibleToEmployees));
+  const [activity, setActivity] = useState<ActivityEntry[]>(() => {
+    const visible = ticket.activity.filter((entry) => entry.visibleToEmployees);
+    return Array.from(new Map(visible.map((entry) => [entry.id, entry])).values());
+  });
   const [adding, setAdding] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", description: "", assigneeId: me.id, estimate: "" });
   const [passTo, setPassTo] = useState("");
   const [passNote, setPassNote] = useState("");
   const [update, setUpdate] = useState("");
-  const seq = useRef(0);
-
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [activityExpanded, setActivityExpanded] = useState(false);
   const progress = ticketProgress({ subtasks });
   const doneCount = subtasks.filter((s) => s.status === "done").length;
   const isHolder = ownerId === me.id;
   const crewName = (id: string) => crew.find((c) => c.id === id)?.name ?? id;
   const owner = crew.find((c) => c.id === ownerId);
 
-  function log(text: string, kind: ActivityEntry["kind"] = "employee") {
-    seq.current += 1;
-    setActivity((a) => [
-      ...a,
-      {
-        id: `local-${seq.current}`,
-        kind,
-        authorId: me.id,
-        authorName: kind === "system" ? "System Controller" : me.name,
-        authorRole: kind === "system" ? "Automation" : me.title,
-        at: nowIso(),
-        text,
-        visibleToEmployees: true,
-      },
-    ]);
+  async function persist(nextSubtasks: Subtask[], nextActivity: ActivityEntry[]) {
+    setSaving(true);
+    setError("");
+    const result = await saveEmployeeTicketWorkspace({
+      ticketId: ticket.id,
+      subtasks: nextSubtasks,
+      activities: nextActivity,
+    });
+    setSaving(false);
+    if (!result.ok) setError(result.error);
   }
 
-  function toggleDone(id: string) {
+  async function toggleDone(id: string) {
     const target = subtasks.find((s) => s.id === id);
     if (!target) return;
     const markDone = target.status !== "done";
-    setSubtasks((list) =>
-      list.map((s) =>
+
+    // Add subtask to an array.
+    const nextSubtasks: Subtask[] = subtasks.map((s) =>
         s.id === id
           ? markDone
-            ? { ...s, status: "done", progress: 100, completedAt: nowIso() }
-            : { ...s, status: "in_progress", progress: 50, completedAt: undefined }
+            ? { ...s, status: "done" as const, progress: 100, completedAt: nowIso() }
+            : { ...s, status: "in_progress" as const, progress: 50, completedAt: undefined }
           : s,
-      ),
     );
-    log(`Subtask “${target.title}” ${markDone ? "marked as done" : "re-opened"} by ${me.name}.`, "system");
+
+    // This is a UI change. Imediately change the UI
+    setSubtasks(nextSubtasks);
+
+    // This creates the UI log array.
+    const nextActivity = [...activity, {
+      id: localActivityId(ticket.id),
+      kind: "system" as const,
+      authorId: me.id,
+      authorName: "System Controller",
+      authorRole: "Automation",
+      at: nowIso(),
+      text: `Subtask “${target.title}” ${markDone ? "marked as done" : "re-opened"} by ${me.name}.`,
+      visibleToEmployees: true,
+    }];
+    setActivity(nextActivity);
+    if (!pendingSubtaskIds.includes(id)) {
+      await persist(nextSubtasks, nextActivity);
+    }
   }
 
   function addSubtask() {
     if (!newTask.title.trim()) return;
-    seq.current += 1;
+    const id = `${ticket.id}-${globalThis.crypto.randomUUID()}`;
     setSubtasks((list) => [
       ...list,
       {
-        id: `ST-new-${seq.current}`,
+        id,
         title: newTask.title.trim(),
         description: newTask.description.trim(),
         assigneeIds: [newTask.assigneeId],
@@ -107,28 +130,79 @@ export function TicketWorkspace({
         progress: 0,
       },
     ]);
-    log(`Subtask “${newTask.title.trim()}” added and assigned to ${crewName(newTask.assigneeId)}.`, "system");
+    setPendingSubtaskIds((ids) => [...ids, id]);
     setNewTask({ title: "", description: "", assigneeId: me.id, estimate: "" });
-    setAdding(false);
   }
 
-  function passTicket() {
+  async function finishAddingSubtasks() {
+    if (pendingSubtaskIds.length === 0) {
+      setAdding(false);
+      return;
+    }
+    setAdding(false);
+    const nextActivity = [...activity, {
+      id: localActivityId(ticket.id),
+      kind: "system" as const,
+      authorId: me.id,
+      authorName: "System Controller",
+      authorRole: "Automation",
+      at: nowIso(),
+      text: `Subtasks added by ${me.name}.`,
+      visibleToEmployees: true,
+    }];
+    setActivity(nextActivity);
+    await persist(subtasks, nextActivity);
+    setPendingSubtaskIds([]);
+  }
+
+  async function passTicket() {
     if (!passTo) return;
     const to = crewName(passTo);
+    setSaving(true);
+    setError("");
+    const result = await passEmployeeTicket({ ticketId: ticket.id, toUserId: passTo, note: passNote });
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
     setOwnerId(passTo);
-    log(`Ticket passed from ${me.name} to ${to}.${passNote.trim() ? ` Handover note: ${passNote.trim()}` : ""}`);
+    const nextActivity = [...activity, {
+      id: localActivityId(ticket.id),
+      kind: "employee" as const,
+      authorId: me.id,
+      authorName: me.name,
+      authorRole: me.title,
+      at: nowIso(),
+      text: `Ticket passed from ${me.name} to ${to}.${passNote.trim() ? ` Handover note: ${passNote.trim()}` : ""}`,
+      visibleToEmployees: true,
+    }];
+    setActivity(nextActivity);
     setPassTo("");
     setPassNote("");
   }
 
-  function postUpdate() {
+  async function postUpdate() {
     if (!update.trim()) return;
-    log(update.trim());
+    const nextActivity = [...activity, {
+      id: localActivityId(ticket.id),
+      kind: "employee" as const,
+      authorId: me.id,
+      authorName: me.name,
+      authorRole: me.title,
+      at: nowIso(),
+      text: update.trim(),
+      visibleToEmployees: true,
+    }];
+    setActivity(nextActivity);
     setUpdate("");
+    await persist(subtasks, nextActivity);
   }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {error && <p className="lg:col-span-12 rounded border border-red-200 bg-red-50 p-3 text-xs text-error">{error}</p>}
+      {saving && <p className="lg:col-span-12 text-xs font-label-mono text-on-surface-variant">Saving ticket changes…</p>}
       {/* ------------------------------------------------------- main column */}
       <div className="lg:col-span-8 flex flex-col gap-6">
         <div className="bg-white border border-slate-200 rounded p-4 shadow-sm flex flex-col gap-2">
@@ -216,9 +290,20 @@ export function TicketWorkspace({
             icon="checklist"
             title="Milestone Breakdown & Subtasks"
             right={
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-slate-100 text-slate-dark border border-slate-border">
-                {doneCount}/{subtasks.length} Done
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-slate-100 text-slate-dark border border-slate-border">
+                  {doneCount}/{subtasks.length} Done
+                </span>
+                <button
+                  type="button"
+                  onClick={finishAddingSubtasks}
+                  disabled={saving || pendingSubtaskIds.length === 0}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-label-mono font-semibold border border-industrial-green text-industrial-green hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Icon name="check" className="text-sm" />
+                  Done{pendingSubtaskIds.length > 0 ? ` (${pendingSubtaskIds.length})` : ""}
+                </button>
+              </div>
             }
           />
           <div className="p-4 md:p-5 flex flex-col gap-3">
@@ -378,8 +463,11 @@ export function TicketWorkspace({
               <p className="text-xs text-on-surface-variant font-label-mono">No attachments on this ticket.</p>
             )}
             {ticket.attachments.map((a) => (
-              <div
+              <a
                 key={a.id}
+                href={`/api/attachments/${a.id}`}
+                target="_blank"
+                rel="noreferrer"
                 className="flex items-center gap-3 p-3 bg-slate-surface border border-slate-border rounded hover:border-safety-orange transition-all cursor-pointer group flex-1 min-w-[220px]"
               >
                 <div className="bg-white border border-slate-border w-10 h-10 rounded flex items-center justify-center text-on-surface-variant group-hover:text-safety-orange transition-colors">
@@ -393,68 +481,30 @@ export function TicketWorkspace({
                     {a.size} • {a.label}
                   </span>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </Card>
 
-        {/* Activity & Notes */}
         <Card>
           <CardHeader
-            icon="forum"
-            title="Activity & Customer Care Notes"
-            right={<span className="text-[10px] font-label-mono text-on-surface-variant">VISIBLE TO CREW</span>}
+            icon="swap_horiz"
+            title="Ticket Handover Notes"
+            right={<span className="text-[10px] font-label-mono text-on-surface-variant">{ticket.handoverNotes?.length ?? 0} Handovers</span>}
           />
-          <div className="p-4 md:p-5 flex flex-col gap-3">
-            {activity.length === 0 && <p className="text-xs text-on-surface-variant font-label-mono">No activity yet.</p>}
-            {activity.map((a) => (
-              <div
-                key={a.id}
-                className={`rounded border p-3 text-xs ${
-                  a.kind === "customer-care"
-                    ? "border-orange-200 border-l-4 border-l-safety-orange bg-orange-50/40"
-                    : a.kind === "system"
-                      ? "border-slate-border bg-slate-surface"
-                      : "border-slate-border bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-label-mono font-bold text-slate-dark flex items-center gap-1.5 uppercase text-[11px]">
-                    <Icon
-                      name={a.kind === "customer-care" ? "support_agent" : a.kind === "system" ? "memory" : "engineering"}
-                      className="text-xs text-safety-orange"
-                    />
-                    {a.authorName}
-                    <span className="font-normal normal-case text-on-surface-variant">[{a.authorRole}]</span>
-                    {a.kind === "customer-care" && (
-                      <span className="px-1.5 py-0.5 rounded bg-safety-orange text-white text-[9px] font-bold">CARE NOTE</span>
-                    )}
-                  </span>
-                  <span className="text-[10px] font-label-mono text-on-surface-variant shrink-0">{formatDateTime(a.at)}</span>
+          <div className="p-4 flex flex-col gap-3">
+            {(ticket.handoverNotes?.length ?? 0) === 0 && (
+              <p className="text-xs text-on-surface-variant font-label-mono">No handover notes yet.</p>
+            )}
+            {ticket.handoverNotes?.map((handover) => (
+              <div key={handover.id} className="border-l-4 border-l-safety-orange bg-orange-50/40 rounded p-3">
+                <div className="flex flex-wrap justify-between gap-2 text-[11px] font-label-mono font-semibold text-slate-dark">
+                  <span>{handover.fromName} → {handover.toName}</span>
+                  <span className="text-on-surface-variant">{formatDateTime(handover.at)}</span>
                 </div>
-                <p className="text-on-surface leading-relaxed">{a.text}</p>
+                {handover.note && <p className="mt-1 text-xs text-on-surface">{handover.note}</p>}
               </div>
             ))}
-            <div className="pt-3 border-t border-slate-border flex flex-col gap-2">
-              <div className="relative custom-focus-ring rounded">
-                <textarea
-                  className="form-textarea w-full border border-slate-border rounded p-3 text-xs bg-slate-surface text-on-surface placeholder:text-outline focus:ring-0 focus:outline-none resize-none"
-                  placeholder="Post a field update for the crew and customer care..."
-                  rows={2}
-                  value={update}
-                  onChange={(e) => setUpdate(e.target.value)}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={postUpdate}
-                disabled={!update.trim()}
-                className="self-end inline-flex items-center gap-1.5 px-4 py-2 bg-slate-dark hover:bg-slate-800 text-white rounded text-xs font-label-mono font-bold transition-colors disabled:opacity-50"
-              >
-                <Icon name="send" className="text-sm text-safety-orange" />
-                Post Update
-              </button>
-            </div>
           </div>
         </Card>
       </div>
@@ -528,6 +578,82 @@ export function TicketWorkspace({
             <Icon name="edit_note" className="text-sm" /> Update Ticket Details
           </Link>
         </div>
+
+        <Card>
+          <button
+            type="button"
+            onClick={() => setActivityExpanded((expanded) => !expanded)}
+            aria-expanded={activityExpanded}
+            className="w-full p-3.5 border-b border-slate-border bg-slate-surface flex items-center justify-between gap-2 text-left"
+          >
+            <span className="flex items-center gap-2">
+              <Icon name="forum" className="text-on-surface-variant text-base" />
+              <span className="font-headline-sm font-bold text-on-surface text-xs tracking-tight">
+                Activity & Customer Care Notes
+              </span>
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="text-[10px] font-label-mono text-on-surface-variant">
+                {activity.length} Entries
+              </span>
+              <Icon name={activityExpanded ? "expand_less" : "expand_more"} className="text-base text-on-surface-variant" />
+            </span>
+          </button>
+          {activityExpanded && (
+            <div className="p-4 flex flex-col gap-3">
+              <span className="text-[10px] font-label-mono text-on-surface-variant">VISIBLE TO CREW</span>
+              {activity.length === 0 && <p className="text-xs text-on-surface-variant font-label-mono">No activity yet.</p>}
+              {activity.map((a) => (
+                <div
+                  key={a.id}
+                  className={`rounded border p-3 text-xs ${
+                    a.kind === "customer-care"
+                      ? "border-orange-200 border-l-4 border-l-safety-orange bg-orange-50/40"
+                      : a.kind === "system"
+                        ? "border-slate-border bg-slate-surface"
+                        : "border-slate-border bg-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="font-label-mono font-bold text-slate-dark flex items-center gap-1.5 uppercase text-[11px]">
+                      <Icon
+                        name={a.kind === "customer-care" ? "support_agent" : a.kind === "system" ? "memory" : "engineering"}
+                        className="text-xs text-safety-orange"
+                      />
+                      {a.authorName}
+                      <span className="font-normal normal-case text-on-surface-variant">[{a.authorRole}]</span>
+                      {a.kind === "customer-care" && (
+                        <span className="px-1.5 py-0.5 rounded bg-safety-orange text-white text-[9px] font-bold">CARE NOTE</span>
+                      )}
+                    </span>
+                    <span className="text-[10px] font-label-mono text-on-surface-variant shrink-0">{formatDate(a.at)}</span>
+                  </div>
+                  <p className="text-on-surface leading-relaxed">{a.text}</p>
+                </div>
+              ))}
+              <div className="pt-3 border-t border-slate-border flex flex-col gap-2">
+                <div className="relative custom-focus-ring rounded">
+                  <textarea
+                    className="form-textarea w-full border border-slate-border rounded p-3 text-xs bg-slate-surface text-on-surface placeholder:text-outline focus:ring-0 focus:outline-none resize-none"
+                    placeholder="Post a field update for the crew and customer care..."
+                    rows={2}
+                    value={update}
+                    onChange={(e) => setUpdate(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={postUpdate}
+                  disabled={!update.trim()}
+                  className="self-end inline-flex items-center gap-1.5 px-4 py-2 bg-slate-dark hover:bg-slate-800 text-white rounded text-xs font-label-mono font-bold transition-colors disabled:opacity-50"
+                >
+                  <Icon name="send" className="text-sm text-safety-orange" />
+                  Post Update
+                </button>
+              </div>
+            </div>
+          )}
+        </Card>
 
         {/* Crew */}
         <Card>

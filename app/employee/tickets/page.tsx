@@ -40,6 +40,7 @@ export default async function MyTicketsPage() {
       endDate: formatDate(t.endDate),
       remaining: remainingLabel(t),
       overdue: isOverdue(t),
+      pendingAssignment: t.pendingParticipantIds?.includes(session.id) ?? false,
     }));
 
   return (

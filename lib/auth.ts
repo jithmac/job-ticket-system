@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/lib/db";
+import type { Employee } from "@/lib/types";
 
 const scryptAsync = promisify(scrypt);
 const SESSION_COOKIE = "apex_session";
@@ -15,6 +16,10 @@ export type SessionUser = {
   name: string;
   email: string;
   role: UserRole;
+  phone: string | null;
+  title: string | null;
+  department: string | null;
+  createdAt: string;
 };
 
 function sessionSecret() {
@@ -55,7 +60,16 @@ function decodeSession(value: string): SessionUser | null {
     const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SessionUser & { exp?: number };
     if (!parsed.exp || parsed.exp < Math.floor(Date.now() / 1000)) return null;
     if (!parsed.id || !parsed.email || !parsed.role || !Object.values(UserRole).includes(parsed.role)) return null;
-    return { id: parsed.id, name: parsed.name, email: parsed.email, role: parsed.role };
+      return {
+        id: parsed.id,
+        name: parsed.name,
+        email: parsed.email,
+        role: parsed.role,
+        phone: parsed.phone ?? null,
+        title: parsed.title ?? null,
+        department: parsed.department ?? null,
+        createdAt: parsed.createdAt ?? "",
+      };
   } catch {
     return null;
   }
@@ -84,10 +98,19 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (!session) return null;
   const user = await db.user.findUnique({
     where: { id: session.id },
-    select: { id: true, name: true, email: true, role: true, passwordHash: true },
+    select: { id: true, name: true, email: true, role: true, passwordHash: true, phone: true, title: true, department: true, createdAt: true },
   });
   if (!user || !user.passwordHash || user.email.toLowerCase() !== session.email.toLowerCase()) return null;
-  return { id: user.id, name: user.name, email: user.email, role: user.role };
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    phone: user.phone,
+    title: user.title,
+    department: user.department,
+    createdAt: user.createdAt.toISOString(),
+  };
 });
 
 export async function requireRole(roles: UserRole[]) {
@@ -95,6 +118,22 @@ export async function requireRole(roles: UserRole[]) {
   if (!user) redirect("/login");
   if (!roles.includes(user.role)) redirect("/");
   return user;
+}
+
+export function employeeFromSession(session: SessionUser): Employee {
+  return {
+    id: session.id,
+    name: session.name,
+    initials: session.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase(),
+    title: session.title ?? "",
+    department: session.department ?? "",
+    skillLevel: session.title ?? "",
+    email: session.email,
+    phone: session.phone ?? "",
+    status: "available",
+    location: "HQ Dispatch",
+    joinedOn: session.createdAt.slice(0, 10),
+  };
 }
 
 export function roleForWorkspace(value: string | null) {

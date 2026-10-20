@@ -79,6 +79,16 @@ export interface ActivityEntry {
   visibleToEmployees: boolean;
 }
 
+export interface HandoverNote {
+  id: string;
+  fromUserId: string;
+  fromName: string;
+  toUserId: string;
+  toName: string;
+  note: string;
+  at: string;
+}
+
 export interface PriorityRequest {
   id: string;
   from: Priority;
@@ -118,6 +128,7 @@ export interface Ticket {
   ownerId: string;
   /** Other employees participating in the job */
   participantIds: string[];
+  pendingParticipantIds?: string[];
   startDate: string;
   endDate: string;
   description: string;
@@ -127,6 +138,7 @@ export interface Ticket {
   subtasks: Subtask[];
   attachments: Attachment[];
   activity: ActivityEntry[];
+  handoverNotes?: HandoverNote[];
   priorityRequests: PriorityRequest[];
   billing?: Billing;
   updatedAt: string;
@@ -146,5 +158,6 @@ export interface EmployeeDashboardTicket {
   status: TicketStatus;
   subtasks: Array<Pick<Subtask, "id" | "title" | "estimate" | "status" | "progress"> & { assigneeIds: string[] }>;
   activity: Pick<ActivityEntry, "id" | "kind" | "authorName" | "at" | "text" | "visibleToEmployees">[];
+  pendingAssignment: boolean;
   updatedAt: string;
 }

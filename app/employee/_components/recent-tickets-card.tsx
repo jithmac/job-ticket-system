@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { getEmployee, getEmployeeDashboard } from "@/lib/db-data";
-import { getSessionUser } from "@/lib/auth";
+import { getEmployeeDashboard } from "@/lib/db-data";
+import { employeeFromSession, getSessionUser } from "@/lib/auth";
 import { Card, CardHeader, StatusBadge } from "./ui";
 
 /** "My Recent Dispatches" card from the employee sample. */
 export async function RecentTicketsCard({ limit = 5 }: { limit?: number }) {
   const session = await getSessionUser();
   if (!session) return null;
-  const me = (await getEmployee(session.id))!;
+  const me = employeeFromSession(session);
   const recent = [...(await getEmployeeDashboard(me.id))]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, limit);

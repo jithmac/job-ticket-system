@@ -20,6 +20,7 @@ export interface TicketRow {
   endDate: string;
   remaining: string;
   overdue: boolean;
+  pendingAssignment: boolean;
 }
 
 const FILTERS = [
@@ -103,9 +104,13 @@ export function TicketsTable({ rows }: { rows: TicketRow[] }) {
             {visible.map((r) => (
               <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3 align-top">
-                  <Link href={`/employee/tickets/${r.id}`} className="font-label-mono font-bold text-safety-orange hover:underline">
-                    #{r.id}
-                  </Link>
+                  {r.pendingAssignment ? (
+                    <span className="font-label-mono font-bold text-on-surface-variant">#{r.id}</span>
+                  ) : (
+                    <Link href={`/employee/tickets/${r.id}`} className="font-label-mono font-bold text-safety-orange hover:underline">
+                      #{r.id}
+                    </Link>
+                  )}
                   <div className="text-[10px] font-label-mono text-on-surface-variant">{r.role}</div>
                 </td>
                 <td className="px-4 py-3 align-top max-w-xs">
@@ -133,12 +138,16 @@ export function TicketsTable({ rows }: { rows: TicketRow[] }) {
                   <div className={`text-[10px] ${r.overdue ? "text-error font-bold" : "text-on-surface-variant"}`}>{r.remaining}</div>
                 </td>
                 <td className="px-4 py-3 align-top text-right">
+                  {r.pendingAssignment ? (
+                  <span className="text-[10px] font-label-mono text-machinery-amber">Still not passed</span>
+                  ) : (
                   <Link
                     href={`/employee/tickets/${r.id}`}
                     className="inline-flex items-center gap-1 font-label-mono font-semibold text-slate-dark hover:text-safety-orange transition-colors"
                   >
                     Open <Icon name="arrow_forward" className="text-xs" />
                   </Link>
+                  )}
                 </td>
               </tr>
             ))}
@@ -149,7 +158,7 @@ export function TicketsTable({ rows }: { rows: TicketRow[] }) {
       {/* Mobile cards */}
       <div className="md:hidden divide-y divide-slate-border">
         {visible.map((r) => (
-          <Link key={r.id} href={`/employee/tickets/${r.id}`} className="block p-3.5 hover:bg-slate-50">
+          <div key={r.id} className="block p-3.5 hover:bg-slate-50">
             <div className="flex items-center justify-between mb-1">
               <span className="font-label-mono text-xs font-bold text-safety-orange">#{r.id}</span>
               <StatusBadge status={r.status} />
@@ -159,7 +168,7 @@ export function TicketsTable({ rows }: { rows: TicketRow[] }) {
               {r.client} • ends {r.endDate}
             </p>
             <ProgressBar value={r.progress} />
-          </Link>
+          </div>
         ))}
       </div>
 

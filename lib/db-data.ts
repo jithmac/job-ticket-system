@@ -7,7 +7,7 @@ import { Prisma, UserRole } from "@prisma/client";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { db } from "@/lib/db";
-import type { Attachment, Client, Employee, EmployeeDashboardTicket, Ticket } from "@/lib/types";
+import type { Attachment, Client, Employee, EmployeeDashboardTicket, HandoverNote, Ticket } from "@/lib/types";
 
 export const currentEmployeeId = "EMP-402";
 export const currentClientId = "CL-1001";
@@ -19,6 +19,7 @@ const ticketInclude = {
   subtasks: { include: { assignees: true } },
   attachments: true,
   activities: true,
+  handovers: { include: { fromUser: { select: { name: true } }, toUser: { select: { name: true } } } },
   priorityRequests: true,
   billing: { include: { lines: true } },
   customer: true,
@@ -107,6 +108,7 @@ function mapTicket(ticket: DbTicket): Ticket {
     createdById: ticket.createdById,
     ownerId: ticket.ownerId,
     participantIds: participants.map((member) => member.userId),
+    pendingParticipantIds: participants.filter((member) => !member.canOpen).map((member) => member.userId),
     startDate: date(ticket.startDate),
     endDate: date(ticket.endDate),
     description: ticket.description,
@@ -140,6 +142,15 @@ function mapTicket(ticket: DbTicket): Ticket {
       at: date(activity.at),
       text: activity.text,
       visibleToEmployees: activity.visibleToEmployees,
+    })),
+    handoverNotes: ticket.handovers.map((handover): HandoverNote => ({
+      id: handover.id,
+      fromUserId: handover.fromUserId,
+      fromName: handover.fromUser.name,
+      toUserId: handover.toUserId,
+      toName: handover.toUser.name,
+      note: handover.note ?? "",
+      at: date(handover.createdAt),
     })),
     priorityRequests: ticket.priorityRequests.map((request) => ({
       id: request.id,
@@ -304,6 +315,7 @@ const getEmployeeDashboardCached = unstable_cache(
         status: true,
         updatedAt: true,
         customer: { select: { name: true } },
+        crew: { where: { userId: employeeId }, select: { canOpen: true } },
         subtasks: {
           select: {
             id: true,
@@ -350,6 +362,9 @@ const getEmployeeDashboardCached = unstable_cache(
         text: activity.text,
         visibleToEmployees: activity.visibleToEmployees,
       })),
+      pendingAssignment: ticket.ownerId !== employeeId &&
+        ticket.createdById !== employeeId &&
+        ticket.crew.some((member) => !member.canOpen),
       updatedAt: date(ticket.updatedAt),
     }));
   },

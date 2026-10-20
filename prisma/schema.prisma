@@ -60,6 +60,8 @@ model User {
   participants     TicketCrew[]
   subtaskAssignees SubtaskAssignee[]
   activities       Activity[]
+  handoverNotes    HandoverNote[]       @relation("HandoverAuthor")
+  handoverRecipients HandoverNote[]     @relation("HandoverRecipient")
   customer         Customer?
 }
 
@@ -105,6 +107,7 @@ model Ticket {
   subtasks         Subtask[]
   attachments      Attachment[]
   activities       Activity[]
+  handovers        HandoverNote[]
   priorityRequests PriorityRequest[]
   billing          Billing?
   createdAt        DateTime          @default(now())
@@ -120,10 +123,12 @@ model TicketNumberSequence {
 model TicketCrew {
   ticketId String
   userId   String
+  canOpen  Boolean @default(false)
   ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([ticketId, userId])
+  @@index([userId, canOpen])
 }
 
 model Subtask {
@@ -171,6 +176,20 @@ model Activity {
   at                 DateTime     @default(now())
   ticket             Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   author             User?        @relation(fields: [authorId], references: [id])
+}
+
+model HandoverNote {
+  id         String   @id
+  ticketId   String
+  fromUserId String
+  toUserId   String
+  note       String?
+  createdAt  DateTime @default(now())
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromUser   User     @relation("HandoverAuthor", fields: [fromUserId], references: [id])
+  toUser     User     @relation("HandoverRecipient", fields: [toUserId], references: [id])
+
+  @@index([ticketId, createdAt])
 }
 
 model PriorityRequest {
