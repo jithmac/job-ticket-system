@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icon";
 import { formatDateTime, phaseLabel, priorityLabel, statusLabel, subtaskProgress } from "@/lib/format";
-import type { Priority, Subtask, TicketStatus } from "@/lib/types";
+import type { Priority, SubtaskStatus, TicketStatus } from "@/lib/types";
 
 /* Building blocks that reproduce the admin-panel sample styling. */
 
@@ -151,7 +151,17 @@ const colsClass: Record<number, string> = {
 };
 
 /** "Job Process & Operational Lifecycle" phase cards from the admin sample. */
-export function PhaseGrid({ subtasks }: { subtasks: Subtask[] }) {
+export function PhaseGrid({
+  subtasks,
+}: {
+  subtasks: Array<{
+    id: string;
+    title: string;
+    status: SubtaskStatus;
+    progress: number;
+    completedAt?: string;
+  }>;
+}) {
   return (
     <div className={`grid grid-cols-1 ${colsClass[Math.min(subtasks.length, 4)] ?? "md:grid-cols-4"} gap-3 pt-1`}>
       {subtasks.map((s, i) => {

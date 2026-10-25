@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Form from "next/form";
-import Image from "next/image";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { NavLink } from "@/components/nav-link";
-import { getAdminUser } from "@/lib/db-data";
+import { getAdminUser } from "@/lib/admin-db-data";
 import { requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { AdminMobileNav } from "./_components/mobile-nav";
@@ -78,13 +77,14 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </button>
           <div className="h-6 w-[1px] bg-slate-700 mx-1"></div>
           <Link href="/" className="flex items-center gap-2 pl-1 cursor-pointer group" title="Switch panel">
-            <Image
-              className="w-8 h-8 rounded border border-slate-600 object-cover"
-              src={adminUser.avatarUrl}
-              alt={adminUser.name}
-              width={32}
-              height={32}
-            />
+            <span className="w-8 h-8 rounded border border-slate-600 bg-slate-700 flex items-center justify-center text-xs font-semibold text-white" aria-hidden="true">
+              {adminUser.name
+                .split(/\s+/)
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </span>
             <div className="hidden xl:flex flex-col text-left">
               <span className="text-xs font-semibold text-white leading-tight">{adminUser.name}</span>
               <span className="text-[10px] text-slate-400 font-label-mono">{adminUser.role}</span>

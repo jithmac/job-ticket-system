@@ -12,7 +12,6 @@ import type { Attachment, Client, Employee, EmployeeDashboardTicket, HandoverNot
 export const currentEmployeeId = "EMP-402";
 export const currentClientId = "CL-1001";
 export const careAgentId = "CC-441";
-export const adminUserId = "ADMIN-001";
 
 const employeeSelect = {
   id: true,
@@ -510,17 +509,6 @@ const getCareAgentCached = unstable_cache(
 export async function getCareAgent() {
   const user = await getCareAgentCached();
   return { id: careAgentId, name: user?.name ?? "Customer Care", role: user?.title ?? "Customer Care Dispatcher" };
-}
-
-const getAdminUserCached = unstable_cache(
-  async () => db.user.findUnique({ where: { id: adminUserId }, select: { name: true, title: true } }),
-  ["admin-user"],
-  { revalidate: 60, tags: ["employees"] },
-);
-
-export async function getAdminUser() {
-  const user = await getAdminUserCached();
-  return { name: user?.name ?? "Administrator", role: user?.title ?? "Operations Lead", avatarUrl: "" };
 }
 
 export const categories = [

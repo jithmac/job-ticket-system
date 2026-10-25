@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icon";
-import { departments, getAdminUser, getClient, getEmployee, getEmployees, getTicket, getTickets, skillLevels } from "@/lib/db-data";
+import { getAdminUser } from "@/lib/admin-db-data";
+import { departments, getClient, getEmployee, getEmployees, getTicket, getTickets, skillLevels } from "@/lib/db-data";
 import {
   activeSubtaskIndex,
   daysRemaining,

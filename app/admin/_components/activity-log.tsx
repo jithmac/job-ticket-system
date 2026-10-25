@@ -1,8 +1,6 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
-import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { formatDateTime } from "@/lib/format";
 import type { ActivityEntry, Employee } from "@/lib/types";
@@ -14,9 +12,9 @@ export function ActivityLog({
   author,
 }: {
   entries: ActivityEntry[];
-  /** Employees referenced by the entries (for avatars). */
+  /** Employees referenced by the entries. */
   people: Employee[];
-  author: { name: string; role: string; avatarUrl: string };
+  author: { name: string; role: string };
 }) {
   const [log, setLog] = useState(entries);
   const [text, setText] = useState("");
@@ -71,15 +69,14 @@ export function ActivityLog({
           return (
             <div key={a.id} className="relative">
               <div className="absolute -left-[32px]">
-                {person ? (
-                  <Avatar employee={person} size={28} className="rounded border-2 border-white shadow-sm" />
-                ) : a.kind === "admin" ? (
-                  <Image src={author.avatarUrl} alt={author.name} width={28} height={28} className="w-7 h-7 rounded border-2 border-white object-cover shadow-sm" />
-                ) : (
-                  <span className="w-7 h-7 rounded border-2 border-white bg-safety-orange text-white flex items-center justify-center shadow-sm">
-                    <Icon name="support_agent" className="text-sm" />
-                  </span>
-                )}
+                <span className="w-7 h-7 rounded border-2 border-white bg-slate-800 text-white flex items-center justify-center shadow-sm text-[10px] font-label-mono font-bold">
+                  {(person?.name ?? (a.kind === "admin" ? author.name : a.authorName))
+                    .split(/\s+/)
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </span>
               </div>
               <div className="flex justify-between items-baseline mb-1 gap-2">
                 <span className="text-xs font-headline-md font-bold text-slate-900">
@@ -99,7 +96,14 @@ export function ActivityLog({
         })}
       </div>
       <div className="mt-2 pt-4 border-t border-slate-200 flex gap-3">
-        <Image src={author.avatarUrl} alt={author.name} width={32} height={32} className="w-8 h-8 rounded border border-slate-300 object-cover mt-0.5" />
+        <span className="w-8 h-8 rounded border border-slate-300 bg-slate-800 text-white flex items-center justify-center text-[10px] font-label-mono font-bold mt-0.5">
+          {author.name
+            .split(/\s+/)
+            .map((part) => part[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase()}
+        </span>
         <div className="flex-1 flex flex-col gap-2">
           <textarea
             className="form-textarea w-full bg-slate-50 border border-slate-200 rounded p-3 text-xs font-body-sm text-slate-800 placeholder:text-slate-400 focus:border-safety-orange focus:bg-white focus:ring-1 focus:ring-safety-orange outline-none resize-none h-20 transition-all"

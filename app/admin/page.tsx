@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
-import { getAdminUser, getClients, getEmployees, getTickets } from "@/lib/db-data";
+import { getAdminOverview, getAdminUser } from "@/lib/admin-db-data";
 import {
   employeeStatusLabel,
   formatDateTime,
-  getClient,
-  getEmployee,
   isOverdue,
   priorityLabel,
   remainingLabel,
@@ -19,16 +17,10 @@ import { PageTitle, PanelTitle, PhaseGrid, PriorityPill, StatCard, StatusPill } 
 export const metadata: Metadata = { title: "Overview" };
 
 export default async function AdminOverviewPage() {
-  const [adminUser, clients, employees, tickets] = await Promise.all([getAdminUser(), getClients(), getEmployees(), getTickets()]);
-  const clientsById = new Map(clients.map((client) => [client.id, client]));
-  const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
-  const active = tickets.filter((t) => t.status !== "completed").sort((a, b) => urgency(b) - urgency(a));
+  const [adminUser, overview] = await Promise.all([getAdminUser(), getAdminOverview()]);
+  const { clientCount, employeeCount, ticketCount, tickets, priorityRequests, recentActivity, crew } = overview;
+  const active = [...tickets].sort((a, b) => urgency(b) - urgency(a));
   const focus = active[0];
-  const pendingRequests = tickets.flatMap((t) => t.priorityRequests.map((r) => ({ t, r })));
-  const recent = tickets
-    .flatMap((t) => t.activity.map((a) => ({ t, a })))
-    .sort((x, y) => y.a.at.localeCompare(x.a.at))
-    .slice(0, 5);
 
   return (
     <>
@@ -59,17 +51,17 @@ export default async function AdminOverviewPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <StatCard label="Active Tickets" value={active.length} icon="confirmation_number" sub={`${tickets.length} total`} />
+        <StatCard label="Active Tickets" value={active.length} icon="confirmation_number" sub={`${ticketCount} total`} />
         <StatCard label="Critical" value={active.filter((t) => t.priority === "critical").length} icon="warning" tone="text-error" />
         <StatCard label="Overdue" value={active.filter(isOverdue).length} icon="alarm" tone="text-machinery-amber" />
         <StatCard
           label="Crew On Duty"
-          value={employees.filter((e) => e.status !== "off_duty").length}
+          value={crew.filter((e) => e.status !== "off_duty").length}
           icon="engineering"
           tone="text-industrial-green"
-          sub={`${employees.length} on roster`}
+          sub={`${employeeCount} on roster`}
         />
-        <StatCard label="Clients" value={clients.length} icon="corporate_fare" tone="text-slate-700" />
+        <StatCard label="Clients" value={clientCount} icon="corporate_fare" tone="text-slate-700" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -96,7 +88,7 @@ export default async function AdminOverviewPage() {
                 <span className="font-bold text-slate-900">{focus.title}</span>
                 <PriorityPill priority={focus.priority} />
                 <span className="font-label-mono text-slate-500">
-                  {clientsById.get(focus.clientId)?.name} • {remainingLabel(focus)}
+                  {focus.clientName} • {remainingLabel(focus)}
                 </span>
               </div>
               <PhaseGrid subtasks={focus.subtasks} />
@@ -116,7 +108,6 @@ export default async function AdminOverviewPage() {
             <div className="flex flex-col divide-y divide-slate-100">
               {active.map((t) => {
                 const p = ticketProgress(t);
-                const holder = employeesById.get(t.ownerId)!;
                 return (
                   <Link key={t.id} href={`/admin/tickets/${t.id}`} className="py-3 flex flex-col md:flex-row md:items-center gap-3 hover:bg-slate-50 -mx-2 px-2 rounded">
                     <div className="flex-1 min-w-0">
@@ -126,7 +117,7 @@ export default async function AdminOverviewPage() {
                       </div>
                       <div className="text-xs font-bold text-slate-900 truncate">{t.title}</div>
                       <div className="text-[10px] font-label-mono text-slate-500">
-                        {clientsById.get(t.clientId)?.name} • Holder: {holder.name} • {priorityLabel[t.priority]}
+                        {t.clientName} • Holder: {t.ownerName} • {priorityLabel[t.priority]}
                       </div>
                     </div>
                     <div className="md:w-48">
@@ -151,11 +142,11 @@ export default async function AdminOverviewPage() {
               <span>PRIORITY CHANGE REQUESTS</span>
               <span className="w-2 h-2 rounded-full bg-safety-orange animate-pulse"></span>
             </div>
-            {pendingRequests.length === 0 && <p className="text-xs text-slate-500">No requests from customer care.</p>}
-            {pendingRequests.map(({ t, r }) => (
-              <Link key={r.id} href={`/admin/tickets/${t.id}`} className="p-2.5 bg-slate-50 border border-slate-200 rounded hover:border-safety-orange">
+            {priorityRequests.length === 0 && <p className="text-xs text-slate-500">No requests from customer care.</p>}
+            {priorityRequests.map((r) => (
+              <Link key={r.id} href={`/admin/tickets/${r.ticketId}`} className="p-2.5 bg-slate-50 border border-slate-200 rounded hover:border-safety-orange">
                 <div className="flex justify-between text-[11px] font-label-mono">
-                  <span className="font-bold text-slate-800">{t.id}</span>
+                  <span className="font-bold text-slate-800">{r.ticketId}</span>
                   <span className="uppercase text-slate-500">{r.status}</span>
                 </div>
                 <div className="text-xs text-slate-700">
@@ -175,10 +166,18 @@ export default async function AdminOverviewPage() {
                 Manage
               </Link>
             </div>
-            {employees.slice(0, 6).map((e) => (
+            {crew.slice(0, 6).map((e) => (
               <div key={e.id} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
                 <div className="flex items-center gap-2">
-                  <Avatar employee={e} size={28} className="rounded border border-slate-300" fallbackClassName="bg-slate-800 text-white" />
+                  <Avatar
+                    employee={{
+                      name: e.name,
+                      initials: e.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase(),
+                    }}
+                    size={28}
+                    className="rounded border border-slate-300"
+                    fallbackClassName="bg-slate-800 text-white"
+                  />
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-slate-900 leading-tight">{e.name}</span>
                     <span className="text-[10px] font-label-mono text-slate-500">{e.title}</span>
@@ -197,10 +196,10 @@ export default async function AdminOverviewPage() {
               <span className="text-safety-orange-bright text-[10px]">LIVE FEED</span>
             </div>
             <div className="space-y-2 text-[11px]">
-              {recent.map(({ t, a }) => (
-                <Link key={`${t.id}-${a.id}`} href={`/admin/tickets/${t.id}`} className="block hover:text-white">
+              {recentActivity.map((a) => (
+                <Link key={a.id} href={`/admin/tickets/${a.ticketId}`} className="block hover:text-white">
                   <div className="flex justify-between">
-                    <span className="text-amber-400">{t.id}</span>
+                    <span className="text-amber-400">{a.ticketId}</span>
                     <span className="text-slate-500">{formatDateTime(a.at)}</span>
                   </div>
                   <div className="text-slate-300 line-clamp-2">
