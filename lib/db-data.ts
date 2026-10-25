@@ -14,19 +14,6 @@ export const currentClientId = "CL-1001";
 export const careAgentId = "CC-441";
 export const adminUserId = "ADMIN-001";
 
-const ticketInclude = {
-  crew: { include: { user: true } },
-  subtasks: { include: { assignees: true } },
-  attachments: true,
-  activities: true,
-  handovers: { include: { fromUser: { select: { name: true } }, toUser: { select: { name: true } } } },
-  priorityRequests: true,
-  billing: { include: { lines: true } },
-  customer: true,
-} satisfies Prisma.TicketInclude;
-
-const relationLoadStrategy = "join" as const;
-
 const employeeSelect = {
   id: true,
   name: true,
@@ -53,7 +40,30 @@ const clientSelect = {
   safetyProtocol: true,
 } satisfies Prisma.CustomerSelect;
 
+const ticketInclude = {
+  crew: { include: { user: { select: employeeSelect } } },
+  subtasks: { include: { assignees: true } },
+  attachments: true,
+  activities: true,
+  handovers: { include: { fromUser: { select: { name: true } }, toUser: { select: { name: true } } } },
+  priorityRequests: true,
+  billing: { include: { lines: true } },
+  customer: { select: clientSelect },
+} satisfies Prisma.TicketInclude;
+
+const employeeTicketInclude = {
+  crew: { include: { user: { select: employeeSelect } } },
+  subtasks: { include: { assignees: true } },
+  attachments: true,
+  activities: true,
+  handovers: { include: { fromUser: { select: { name: true } }, toUser: { select: { name: true } } } },
+  priorityRequests: true,
+} satisfies Prisma.TicketInclude;
+
+const relationLoadStrategy = "join" as const;
+
 type DbTicket = Prisma.TicketGetPayload<{ include: typeof ticketInclude }>;
+type DbEmployeeTicket = Prisma.TicketGetPayload<{ include: typeof employeeTicketInclude }>;
 type EmployeeUser = Prisma.UserGetPayload<{ select: typeof employeeSelect }>;
 type ClientRecord = Prisma.CustomerGetPayload<{ select: typeof clientSelect }>;
 
@@ -95,7 +105,7 @@ function client(customer: ClientRecord): Client {
   };
 }
 
-function mapTicket(ticket: DbTicket): Ticket {
+function mapTicket(ticket: DbTicket | DbEmployeeTicket): Ticket {
   const participants = ticket.crew.filter((member) => member.userId !== ticket.ownerId);
 
   return {
@@ -161,7 +171,7 @@ function mapTicket(ticket: DbTicket): Ticket {
       at: date(request.at),
       status: request.status as Ticket["priorityRequests"][number]["status"],
     })),
-    billing: ticket.billing
+    billing: "billing" in ticket && ticket.billing
       ? {
           invoiceId: ticket.billing.invoiceId,
           issuedOn: date(ticket.billing.issuedOn),
@@ -258,6 +268,20 @@ export const getTicket = cache(async (id: string) => {
   return row;
 });
 
+const getEmployeeTicketCached = unstable_cache(
+  async (id: string) => {
+    const row = await db.ticket.findUnique({ where: { id }, relationLoadStrategy, include: employeeTicketInclude });
+    return row ? mapTicket(row) : undefined;
+  },
+  ["employee-ticket"],
+  { revalidate: 30, tags: ["employee-tickets"] },
+);
+
+export const getEmployeeTicket = cache(async (id: string) => {
+  const row = await getEmployeeTicketCached(id);
+  return row;
+});
+
 const getTicketByJobIdCached = unstable_cache(
   async (jobId: string) => {
     const row = await db.ticket.findUnique({ where: { jobId }, relationLoadStrategy, include: ticketInclude });
@@ -295,6 +319,93 @@ const getTicketsForEmployeeCached = unstable_cache(
 );
 
 export const getTicketsForEmployee = cache((employeeId: string) => getTicketsForEmployeeCached(employeeId));
+
+export type EmployeeTicketListItem = {
+  id: string;
+  jobId: string;
+  title: string;
+  clientId: string;
+  clientName: string;
+  createdById: string;
+  ownerId: string;
+  ownerName: string;
+  startDate: string;
+  endDate: string;
+  priority: Ticket["priority"];
+  status: Ticket["status"];
+  subtasks: Array<Pick<Ticket["subtasks"][number], "status" | "progress">>;
+  pendingAssignment: boolean;
+};
+
+const getEmployeeTicketListCached = unstable_cache(
+  async (employeeId: string): Promise<EmployeeTicketListItem[]> => {
+    const rows = await db.ticket.findMany({
+      // Below conditions are used to fetch data related to the relavant employee.
+      where: { 
+        OR: [
+          { ownerId: employeeId }, 
+          { createdById: employeeId }, 
+          { crew: { some: { userId: employeeId } } }
+        ] 
+      },
+
+      orderBy: { updatedAt: "desc" },
+
+      select: {
+        id: true,
+        jobId: true,
+        title: true,
+        customerId: true,
+        createdById: true,
+        ownerId: true,
+        startDate: true,
+        endDate: true,
+        priority: true,
+        status: true,
+        owner: { 
+          select: { name: true } 
+        },
+        customer: { 
+          select: { name: true } 
+        },
+        crew: {
+          // Fetch the crew members for the specific employee
+          where: { userId: employeeId },
+          select: { canOpen: true } 
+        },
+        subtasks: { 
+          select: { status: true, progress: true } 
+        },
+      },
+    });
+
+    return rows.map((ticket) => ({
+      id: ticket.id,
+      jobId: ticket.jobId,
+      title: ticket.title,
+      clientId: ticket.customerId,
+      clientName: ticket.customer.name,
+      createdById: ticket.createdById,
+      ownerId: ticket.ownerId,
+      ownerName: ticket.owner.name,
+      startDate: date(ticket.startDate),
+      endDate: date(ticket.endDate),
+      priority: ticket.priority.toLowerCase() as EmployeeTicketListItem["priority"],
+      status: ticket.status.toLowerCase() as EmployeeTicketListItem["status"],
+      subtasks: ticket.subtasks.map((subtask) => ({
+        status: subtask.status.toLowerCase() as EmployeeTicketListItem["subtasks"][number]["status"],
+        progress: subtask.progress,
+      })),
+      pendingAssignment: ticket.ownerId !== employeeId &&
+        ticket.createdById !== employeeId &&
+        ticket.crew.some((member) => !member.canOpen),
+    }));
+  },
+  ["employee-ticket-list"],
+  { revalidate: 30, tags: ["tickets"] },
+);
+
+export const getEmployeeTicketList = cache((employeeId: string) => getEmployeeTicketListCached(employeeId));
 
 const getEmployeeDashboardCached = unstable_cache(
   async (employeeId: string): Promise<EmployeeDashboardTicket[]> => {

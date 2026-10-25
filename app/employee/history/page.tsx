@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { getClients, getEmployees } from "@/lib/db-data";
+import { getEmployeeTicketList } from "@/lib/db-data";
 import { requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
-import { formatDate, getClient, getEmployee, ticketsForEmployee } from "@/lib/tickets";
+import { formatDate } from "@/lib/tickets";
 import { Card, CardHeader, PageHeader, PriorityBadge, StatusBadge } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Previous Tickets" };
 
 export default async function HistoryPage() {
   const session = await requireRole([UserRole.EMPLOYEE]);
-  const [clients, employees] = await Promise.all([getClients(), getEmployees()]);
-  const clientsById = new Map(clients.map((client) => [client.id, client]));
-  const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
-  const previous = (await ticketsForEmployee(session.id))
+  const previous = (await getEmployeeTicketList(session.id))
     .filter((t) => t.status === "completed")
     .sort((a, b) => b.endDate.localeCompare(a.endDate));
 
@@ -51,7 +48,7 @@ export default async function HistoryPage() {
                     </div>
                     <p className="text-sm font-semibold text-on-surface line-clamp-1">{t.title}</p>
                     <p className="text-[11px] font-label-mono text-on-surface-variant">
-                      {clientsById.get(t.clientId)?.name} • Held by {employeesById.get(t.ownerId)?.name} • {done}/{t.subtasks.length}{" "}
+                      {t.clientName} • Held by {t.ownerName} • {done}/{t.subtasks.length}{" "}
                       subtasks
                     </p>
                   </div>

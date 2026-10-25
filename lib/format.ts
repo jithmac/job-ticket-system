@@ -31,7 +31,7 @@ export function daysRemaining(ticket: Pick<Ticket, "endDate">) {
   return Math.ceil((end - new Date(REFERENCE_DATE).getTime()) / DAY_MS);
 }
 
-export function isOverdue(ticket: Ticket) {
+export function isOverdue(ticket: Pick<Ticket, "status" | "endDate">) {
   return ticket.status !== "completed" && daysRemaining(ticket) < 0;
 }
 

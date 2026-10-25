@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { categories, getEmployee, getLiveTicketWizardOptions, getTicket, getTickets } from "@/lib/db-data";
+import { categories, getEmployee, getEmployeeTicket, getLiveTicketWizardOptions } from "@/lib/db-data";
 import { requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { ticketToDraft } from "../../../_components/draft";
 import { RecentTicketsCard } from "../../../_components/recent-tickets-card";
 import { TicketWizard } from "../../../_components/ticket-wizard";
 import { PageHeader, SlaPolicyBanner } from "../../../_components/ui";
-
-export async function generateStaticParams() {
-  const tickets = await getTickets();
-  return tickets.map((t) => ({ ticketId: t.id }));
-}
 
 export async function generateMetadata({ params }: PageProps<"/employee/tickets/[ticketId]/edit">): Promise<Metadata> {
   const { ticketId } = await params;
@@ -21,7 +16,7 @@ export async function generateMetadata({ params }: PageProps<"/employee/tickets/
 export default async function EditTicketPage({ params }: PageProps<"/employee/tickets/[ticketId]/edit">) {
   const session = await requireRole([UserRole.EMPLOYEE]);
   const { ticketId } = await params;
-  const ticket = await getTicket(ticketId);
+  const ticket = await getEmployeeTicket(ticketId);
   if (!ticket) notFound();
   if (ticket.ownerId !== session.id && ticket.createdById !== session.id && !ticket.participantIds.includes(session.id)) {
     redirect("/employee/tickets");

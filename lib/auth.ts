@@ -91,10 +91,14 @@ export async function clearSession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+async function getSignedSession() {
   const value = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!value) return null;
-  const session = decodeSession(value);
+  return decodeSession(value);
+}
+
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  const session = await getSignedSession();
   if (!session) return null;
   const user = await db.user.findUnique({
     where: { id: session.id },
@@ -114,10 +118,17 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 });
 
 export async function requireRole(roles: UserRole[]) {
-  const user = await getSessionUser();
+  const session = await getSignedSession();
+  if (!session) redirect("/login");
+
+  const user = await db.user.findUnique({
+    where: { id: session.id },
+    select: { role: true },
+  });
   if (!user) redirect("/login");
   if (!roles.includes(user.role)) redirect("/");
-  return user;
+
+  return { ...session, role: user.role };
 }
 
 export function employeeFromSession(session: SessionUser): Employee {

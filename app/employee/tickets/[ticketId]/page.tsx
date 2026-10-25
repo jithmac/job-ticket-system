@@ -1,27 +1,21 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { getClient, getTicket, getTickets } from "@/lib/db-data";
+import { getEmployeeTicket } from "@/lib/db-data";
 import { employeeFromSession, requireRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { customerJobUrl, ticketCrew } from "@/lib/tickets";
 import { TicketWorkspace } from "../../_components/ticket-workspace";
 import { PageHeader, PriorityBadge, StatusBadge } from "../../_components/ui";
 
-/** Pre-render every known ticket at build time (static, instantly prefetchable). */
-export async function generateStaticParams() {
-  const tickets = await getTickets();
-  return tickets.map((t) => ({ ticketId: t.id }));
-}
-
 export async function generateMetadata({ params }: PageProps<"/employee/tickets/[ticketId]">): Promise<Metadata> {
   const { ticketId } = await params;
-  return { title: (await getTicket(ticketId))?.title ?? ticketId };
+  return { title: `Ticket ${ticketId}` };
 }
 
 export default async function EmployeeTicketPage({ params }: PageProps<"/employee/tickets/[ticketId]">) {
   const session = await requireRole([UserRole.EMPLOYEE]);
   const { ticketId } = await params;
-  const ticket = await getTicket(ticketId);
+  const ticket = await getEmployeeTicket(ticketId);
   if (!ticket) notFound();
   if (
     ticket.ownerId !== session.id &&
@@ -52,7 +46,6 @@ export default async function EmployeeTicketPage({ params }: PageProps<"/employe
       <TicketWorkspace
         ticket={ticket}
         crew={await ticketCrew(ticket)}
-        client={(await getClient(ticket.clientId))!}
         me={employeeFromSession(session)}
         customerLink={customerJobUrl(ticket)}
       />

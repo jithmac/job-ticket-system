@@ -176,8 +176,11 @@ export async function saveEmployeeTicketWorkspace(input: WorkspaceInput): Promis
           subtasks: { select: { id: true } },
         },
       });
+
       if (!ticket) throw new Error("Ticket not found.");
+
       const membership = ticket.crew.find((member) => member.userId === session.id);
+
       if (ticket.createdById !== session.id && ticket.ownerId !== session.id && !membership?.canOpen) throw new Error("You do not have access to update this ticket.");
       const assigneeIds = Array.from(new Set(input.subtasks.flatMap((subtask) => subtask.assigneeIds)));
       const employees = await tx.user.findMany({ where: { id: { in: [session.id, ...assigneeIds] }, role: UserRole.EMPLOYEE }, select: { id: true } });
@@ -217,11 +220,67 @@ export async function saveEmployeeTicketWorkspace(input: WorkspaceInput): Promis
       });
       return input.ticketId;
     }, { timeout: 30000 });
-    revalidateTag("tickets", { expire: 0 }); revalidatePath("/employee"); revalidatePath("/employee/tickets");
-    revalidatePath(`/employee/tickets/${input.ticketId}`); refresh();
+
+    revalidateTag("employee-tickets", { expire: 0 });
     return { ok: true, ticketId: result };
   } catch (error) {
     return { ok: false, error: mutationError(error, "Unable to save ticket workspace changes.") };
+  }
+}
+
+export async function addEmployeeTicketSubtasks(
+  input: Pick<WorkspaceInput, "ticketId" | "subtasks" | "activities">,
+): Promise<TicketMutationResult> {
+  try {
+    const session = await requireRole([UserRole.EMPLOYEE]);
+    const result = await db.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: input.ticketId },
+        select: { id: true, createdById: true, ownerId: true },
+      });
+      if (!ticket) throw new Error("Ticket not found.");
+      if (ticket.createdById !== session.id && ticket.ownerId !== session.id) {
+        throw new Error("You do not have access to update this ticket.");
+      }
+
+      for (const subtask of input.subtasks) {
+        await tx.subtask.create({
+          data: {
+            id: subtask.id,
+            ticketId: input.ticketId,
+            title: subtask.title.trim(),
+            description: subtask.description.trim(),
+            estimate: subtask.estimate.trim() || "—",
+            status: subtask.status.toUpperCase() as "PENDING" | "IN_PROGRESS" | "DONE",
+            progress: Math.max(0, Math.min(100, subtask.progress)),
+            completedAt: workspaceDate(subtask.completedAt),
+            assignees: {
+              create: subtask.assigneeIds.map((userId) => ({ userId })),
+            },
+          },
+        });
+      }
+
+      await tx.activity.createMany({
+        data: input.activities.map((activity) => ({
+          id: activity.id,
+          ticketId: input.ticketId,
+          kind: activity.kind.toUpperCase().replace("-", "_") as "SYSTEM" | "EMPLOYEE" | "CUSTOMER_CARE" | "ADMIN",
+          authorId: activity.authorId ?? null,
+          authorName: activity.authorName,
+          authorRole: activity.authorRole,
+          text: activity.text,
+          visibleToEmployees: activity.visibleToEmployees,
+          at: workspaceDate(activity.at) ?? new Date(),
+        })),
+        skipDuplicates: true,
+      });
+      return input.ticketId;
+    }, { timeout: 30000 });
+    revalidateTag("employee-tickets", { expire: 0 });
+    return { ok: true, ticketId: result };
+  } catch (error) {
+    return { ok: false, error: mutationError(error, "Unable to add ticket subtasks.") };
   }
 }
 
@@ -249,8 +308,7 @@ export async function passEmployeeTicket(input: { ticketId: string; toUserId: st
       } });
       return input.ticketId;
     }, { timeout: 10000 });
-    revalidateTag("tickets", { expire: 0 }); revalidatePath("/employee"); revalidatePath("/employee/tickets");
-    revalidatePath(`/employee/tickets/${input.ticketId}`); refresh();
+    revalidateTag("employee-tickets", { expire: 0 });
     return { ok: true, ticketId: result };
   } catch (error) {
     return { ok: false, error: mutationError(error, "Unable to pass ticket.") };

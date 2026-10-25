@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { saveEmployeeTicketWorkspace, passEmployeeTicket } from "../actions";
+import { addEmployeeTicketSubtasks, saveEmployeeTicketWorkspace, passEmployeeTicket } from "../actions";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import {
@@ -14,7 +14,7 @@ import {
   subtaskProgress,
   ticketProgress,
 } from "@/lib/format";
-import type { ActivityEntry, Client, Employee, Subtask, Ticket } from "@/lib/types";
+import type { ActivityEntry, Employee, Subtask, Ticket } from "@/lib/types";
 import { Card, CardHeader, PriorityBadge, ProgressBar, StatusBadge } from "./ui";
 
 function nowIso() {
@@ -38,13 +38,11 @@ const attachmentIcon: Record<Ticket["attachments"][number]["kind"], string> = {
 export function TicketWorkspace({
   ticket,
   crew,
-  client,
   me,
   customerLink,
 }: {
   ticket: Ticket;
   crew: Employee[];
-  client: Client;
   me: Employee;
   customerLink: string;
 }) {
@@ -63,6 +61,8 @@ export function TicketWorkspace({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [activityExpanded, setActivityExpanded] = useState(false);
+  const [subtasksExpanded, setSubtasksExpanded] = useState(false);
+  const [crewExpanded, setCrewExpanded] = useState(false);
   const progress = ticketProgress({ subtasks });
   const doneCount = subtasks.filter((s) => s.status === "done").length;
   const isHolder = ownerId === me.id;
@@ -151,7 +151,18 @@ export function TicketWorkspace({
       visibleToEmployees: true,
     }];
     setActivity(nextActivity);
-    await persist(subtasks, nextActivity);
+    setSaving(true);
+    setError("");
+    const result = await addEmployeeTicketSubtasks({
+      ticketId: ticket.id,
+      subtasks: subtasks.filter((subtask) => pendingSubtaskIds.includes(subtask.id)),
+      activities: [nextActivity.at(-1)!],
+    });
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
     setPendingSubtaskIds([]);
   }
 
@@ -271,7 +282,7 @@ export function TicketWorkspace({
             </div>
           </div>
           <dl className="p-5 md:px-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Meta label="Client" value={client.name} sub={client.facility} />
+            <Meta label="Client" value={ticket.clientId} />
             <Meta label="Start Date" value={formatDate(ticket.startDate)} />
             <Meta label="End Date" value={formatDate(ticket.endDate)} sub={remainingLabel(ticket)} accent />
             <Meta label="Category" value={ticket.category} />
@@ -286,27 +297,46 @@ export function TicketWorkspace({
 
         {/* Subtasks */}
         <Card>
-          <CardHeader
-            icon="checklist"
-            title="Milestone Breakdown & Subtasks"
-            right={
-              <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-slate-100 text-slate-dark border border-slate-border">
-                  {doneCount}/{subtasks.length} Done
-                </span>
+          <div className="p-3.5 border-b border-slate-border bg-slate-surface flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setSubtasksExpanded((expanded) => !expanded)}
+              aria-expanded={subtasksExpanded}
+              className="flex items-center gap-2 text-left min-w-0"
+            >
+              <Icon name="checklist" className="text-on-surface-variant text-base" />
+              <span className="font-headline-sm font-bold text-on-surface text-xs tracking-tight">Milestone Breakdown &amp; Subtasks</span>
+              <Icon name={subtasksExpanded ? "expand_less" : "expand_more"} className="text-base text-on-surface-variant" />
+            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-label-mono font-semibold bg-slate-100 text-slate-dark border border-slate-border">
+                {doneCount}/{subtasks.length} Done
+              </span>
+              {!adding && (
                 <button
                   type="button"
-                  onClick={finishAddingSubtasks}
-                  disabled={saving || pendingSubtaskIds.length === 0}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-label-mono font-semibold border border-industrial-green text-industrial-green hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => {
+                    setAdding(true);
+                    setSubtasksExpanded(true);
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-label-mono font-semibold border border-safety-orange text-safety-orange hover:bg-orange-50/50"
                 >
-                  <Icon name="check" className="text-sm" />
-                  Done{pendingSubtaskIds.length > 0 ? ` (${pendingSubtaskIds.length})` : ""}
+                  <Icon name="add_task" className="text-sm" />
+                  Add Subtask
                 </button>
-              </div>
-            }
-          />
-          <div className="p-4 md:p-5 flex flex-col gap-3">
+              )}
+              <button
+                type="button"
+                onClick={finishAddingSubtasks}
+                disabled={saving || pendingSubtaskIds.length === 0}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-label-mono font-semibold border border-industrial-green text-industrial-green hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="check" className="text-sm" />
+                Done{pendingSubtaskIds.length > 0 ? ` (${pendingSubtaskIds.length})` : ""}
+              </button>
+            </div>
+          </div>
+          {subtasksExpanded && <div className="p-4 md:p-5 flex flex-col gap-3">
             {subtasks.map((s, i) => {
               const done = s.status === "done";
               return (
@@ -438,17 +468,8 @@ export function TicketWorkspace({
                   </div>
                 </div>
               </div>
-            ) : (
-              <button
-                className="inline-flex items-center justify-center gap-1 px-3 py-2.5 rounded text-xs font-label-mono font-semibold border border-dashed border-safety-orange text-safety-orange hover:bg-orange-50/50 transition-colors"
-                type="button"
-                onClick={() => setAdding(true)}
-              >
-                <Icon name="add_task" className="text-sm" />
-                Add Subtask
-              </button>
-            )}
-          </div>
+            ) : null}
+          </div>}
         </Card>
 
         {/* Attachments */}
@@ -657,33 +678,45 @@ export function TicketWorkspace({
 
         {/* Crew */}
         <Card>
-          <CardHeader
-            icon="engineering"
-            title="Participating Crew"
-            right={<span className="text-[10px] font-label-mono text-on-surface-variant">{crew.length} Assigned</span>}
-          />
-          <ul className="divide-y divide-slate-border">
-            {crew.map((c) => (
-              <li key={c.id} className="p-3 flex items-center gap-2.5">
-                <Avatar employee={c} size={32} className="rounded border border-slate-border" />
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-bold text-on-surface truncate">{c.name}</span>
-                  <span className="text-[10px] font-label-mono text-on-surface-variant truncate">
-                    {c.id} • {c.title}
-                  </span>
-                </div>
-                {c.id === ownerId ? (
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-label-mono font-bold bg-safety-orange text-white uppercase">
-                    Holder
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-label-mono text-industrial-green font-semibold">
-                    {employeeStatusLabel[c.status]}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            onClick={() => setCrewExpanded((expanded) => !expanded)}
+            aria-expanded={crewExpanded}
+            className="w-full p-3.5 border-b border-slate-border bg-slate-surface flex items-center justify-between gap-2 text-left"
+          >
+            <span className="flex items-center gap-2">
+              <Icon name="engineering" className="text-on-surface-variant text-base" />
+              <span className="font-headline-sm font-bold text-on-surface text-xs tracking-tight">Participating Crew</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="text-[10px] font-label-mono text-on-surface-variant">{crew.length} Assigned</span>
+              <Icon name={crewExpanded ? "expand_less" : "expand_more"} className="text-base text-on-surface-variant" />
+            </span>
+          </button>
+          {crewExpanded && (
+            <ul className="divide-y divide-slate-border">
+              {crew.map((c) => (
+                <li key={c.id} className="p-3 flex items-center gap-2.5">
+                  <Avatar employee={c} size={32} className="rounded border border-slate-border" />
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-xs font-bold text-on-surface truncate">{c.name}</span>
+                    <span className="text-[10px] font-label-mono text-on-surface-variant truncate">
+                      {c.id} • {c.title}
+                    </span>
+                  </div>
+                  {c.id === ownerId ? (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-label-mono font-bold bg-safety-orange text-white uppercase">
+                      Holder
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-label-mono text-industrial-green font-semibold">
+                      {employeeStatusLabel[c.status]}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
 
         {/* Properties */}
