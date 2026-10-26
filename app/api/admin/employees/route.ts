@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { hashPassword, requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { departments, skillLevels } from "@/lib/db-data";
@@ -57,10 +58,11 @@ export async function POST(request: Request) {
       location: "HQ Dispatch",
       joinedOn: user.createdAt.toISOString().slice(0, 10),
     };
+    revalidateTag("employees", { expire: 0 });
+    revalidateTag("admin-overview", { expire: 0 });
     return NextResponse.json({ employee }, { status: 201 });
   } catch (error) {
     console.error("Employee creation failed", error);
     return NextResponse.json({ error: "Unable to create employee." }, { status: 500 });
   }
 }
-

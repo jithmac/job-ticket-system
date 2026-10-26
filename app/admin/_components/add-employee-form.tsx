@@ -37,23 +37,31 @@ export function AddEmployeeForm({
   const [added, setAdded] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [count, setCount] = useState(activeCount);
+  const [saving, setSaving] = useState(false);
 
   async function submit() {
     setError(null);
-    const response = await fetch("/api/admin/employees", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const result = (await response.json()) as { employee?: Employee; error?: string };
-    if (!response.ok || !result.employee) {
-      setError(result.error ?? "Unable to create employee.");
-      return;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/admin/employees", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const result = (await response.json()) as { employee?: Employee; error?: string };
+      if (!response.ok || !result.employee) {
+        setError(result.error ?? "Unable to create employee.");
+        return;
+      }
+      onAdd?.(result.employee);
+      setCount((c) => c + 1);
+      setAdded(`${result.employee.name} registered as ${result.employee.id}.`);
+      setForm(blank);
+    } catch {
+      setError("Unable to reach the employee service. Try again.");
+    } finally {
+      setSaving(false);
     }
-    onAdd?.(result.employee);
-    setCount((c) => c + 1);
-    setAdded(`${result.employee.name} registered as ${result.employee.id}.`);
-    setForm(blank);
   }
 
   return (
@@ -136,9 +144,10 @@ export function AddEmployeeForm({
         <button
           type="button"
           onClick={submit}
+          disabled={saving}
           className="w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-900 py-2 px-3 rounded text-xs font-label-mono font-bold flex items-center justify-center gap-1.5 transition-colors"
         >
-          <Icon name="how_to_reg" className="text-sm text-safety-orange" /> Register &amp; Dispatch Member
+          <Icon name="how_to_reg" className="text-sm text-safety-orange" /> {saving ? "Registering..." : "Register & Dispatch Member"}
         </button>
       </div>
     </section>

@@ -63,6 +63,7 @@ export function PageTitle({
   back,
   backMeta,
   actions,
+  meta,
 }: {
   id?: string;
   badges?: ReactNode;
@@ -70,6 +71,7 @@ export function PageTitle({
   back?: { href: string; label: string };
   backMeta?: ReactNode;
   actions?: ReactNode;
+  meta?: ReactNode;
 }) {
   return (
     <>
@@ -98,6 +100,7 @@ export function PageTitle({
             </div>
           )}
           <h1 className="text-xl md:text-2xl font-headline-lg font-bold text-slate-900 tracking-tight">{title}</h1>
+          {meta && <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] font-label-mono text-slate-500">{meta}</div>}
         </div>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>

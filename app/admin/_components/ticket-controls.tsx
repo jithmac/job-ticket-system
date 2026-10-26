@@ -1,72 +1,70 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
-import { formatDate, formatDateTime, priorityLabel } from "@/lib/format";
-import type { Priority, PriorityRequest, TicketStatus } from "@/lib/types";
-import { PriorityPill, StatusPill } from "./ui";
+import { formatDateTime, priorityLabel } from "@/lib/format";
+import type { PriorityRequest, TicketStatus } from "@/lib/types";
+import { deleteAdminTicket, setAdminTicketHold } from "../actions";
 
 /** Operational controls + priority-change requests + ticket properties (admin ticket sidebar). */
 export function TicketControls({
   status: initialStatus,
-  priority: initialPriority,
   requests: initialRequests,
-  category,
-  endDate,
-  holder,
+  ticketId,
   children,
 }: {
   status: TicketStatus;
-  priority: Priority;
   requests: PriorityRequest[];
-  category: string;
-  endDate: string;
-  holder: string;
+  ticketId: string;
   /** Rendered between the controls and the properties card (sample order). */
   children?: ReactNode;
 }) {
   const [status, setStatus] = useState(initialStatus);
-  const [priority, setPriority] = useState(initialPriority);
   const [requests, setRequests] = useState(initialRequests);
-  const closed = status === "completed";
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const router = useRouter();
+  const onHold = status === "on_hold";
 
   function decide(id: string, decision: "approved" | "declined") {
-    const req = requests.find((r) => r.id === id);
-    if (req && decision === "approved") setPriority(req.to);
     setRequests((list) => list.map((r) => (r.id === id ? { ...r, status: decision } : r)));
   }
 
   return (
     <>
-      {/* Operational Controls & Dispatch Action */}
       <section className="bg-white border-2 border-safety-orange/40 rounded p-5 flex flex-col gap-3 shadow-sm">
         <div className="text-[11px] font-label-mono uppercase tracking-wider text-slate-500 font-bold flex items-center justify-between">
           <span>OPERATIONAL CONTROLS</span>
-          <span className={`w-2 h-2 rounded-full ${closed ? "bg-slate-300" : "bg-safety-orange animate-pulse"}`}></span>
+          <span className={`w-2 h-2 rounded-full ${onHold ? "bg-amber-400" : "bg-safety-orange animate-pulse"}`}></span>
         </div>
-        <button
-          type="button"
-          disabled={closed}
-          onClick={() => setStatus("in_progress")}
-          className="w-full bg-safety-orange hover:bg-safety-orange-bright active:bg-orange-700 text-white py-2.5 px-4 rounded text-xs font-label-mono font-bold tracking-wide uppercase shadow transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          <Icon name="emergency_home" className="text-base" /> {status === "in_progress" ? "Crew Dispatched" : "Dispatch Crew"}
-        </button>
-        <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            disabled={closed}
-            onClick={() => setStatus("on_hold")}
+            onClick={async () => {
+              const result = await setAdminTicketHold({ ticketId, hold: !onHold });
+              if (result.ok) setStatus(onHold ? "open" : "on_hold");
+            }}
             className="border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-800 py-2 rounded text-xs font-label-mono font-semibold transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
           >
-            <Icon name="pause_circle" className="text-sm text-slate-600" /> Put On Hold
+            <Icon name="pause_circle" className="text-sm text-slate-600" /> {onHold ? "Remove Hold" : "Put On Hold"}
           </button>
           <button
             type="button"
-            onClick={() => setStatus(closed ? "open" : "completed")}
-            className="border border-slate-300 bg-slate-50 hover:bg-red-50 hover:border-red-300 text-slate-700 hover:text-red-700 py-2 rounded text-xs font-label-mono font-semibold transition-colors flex items-center justify-center gap-1"
+            onClick={async () => {
+              if (!deleteConfirm) {
+                setDeleteConfirm(true);
+                return;
+              }
+              setDeleting(true);
+              const result = await deleteAdminTicket(ticketId);
+              if (result.ok) router.replace("/admin/tickets");
+              else setDeleting(false);
+            }}
+            disabled={deleting}
+            className="border border-red-300 bg-red-50 hover:bg-red-100 text-red-700 py-2 rounded text-xs font-label-mono font-semibold transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
           >
-            <Icon name={closed ? "lock_open" : "lock"} className="text-sm" /> {closed ? "Reopen" : "Close Ticket"}
+            <Icon name="delete" className="text-sm" /> {deleting ? "Deleting..." : deleteConfirm ? "Confirm Delete" : "Delete Ticket"}
           </button>
         </div>
       </section>
@@ -130,35 +128,6 @@ export function TicketControls({
 
       {children}
 
-      {/* Ticket Properties Card */}
-      <section className="bg-white border border-slate-200 rounded p-5 flex flex-col gap-4 shadow-sm">
-        <h3 className="text-xs font-label-mono uppercase tracking-wider text-slate-500 font-bold border-b border-slate-100 pb-2 flex items-center justify-between">
-          <span>Ticket Properties</span>
-          <Icon name="tune" className="text-sm text-slate-400" />
-        </h3>
-        <div className="flex flex-col gap-3.5 text-xs font-body-sm">
-          <div className="flex justify-between items-center py-1 border-b border-slate-100">
-            <span className="text-slate-500 font-label-mono">STATUS</span>
-            <StatusPill status={status} />
-          </div>
-          <div className="flex justify-between items-center py-1 border-b border-slate-100">
-            <span className="text-slate-500 font-label-mono">PRIORITY</span>
-            <PriorityPill priority={priority} />
-          </div>
-          <div className="flex justify-between items-center py-1 border-b border-slate-100 gap-2">
-            <span className="text-slate-500 font-label-mono">CATEGORY</span>
-            <span className="font-label-mono text-slate-700 font-semibold text-right">{category}</span>
-          </div>
-          <div className="flex justify-between items-center py-1 border-b border-slate-100">
-            <span className="text-slate-500 font-label-mono">TICKET HOLDER</span>
-            <span className="font-label-mono text-slate-700 font-semibold">{holder}</span>
-          </div>
-          <div className="flex justify-between items-center py-1">
-            <span className="text-slate-500 font-label-mono">END DATE</span>
-            <span className="font-label-mono text-slate-700 font-semibold">{formatDate(endDate)}</span>
-          </div>
-        </div>
-      </section>
     </>
   );
 }

@@ -17,6 +17,9 @@ export default async function EmployeeTicketPage({ params }: PageProps<"/employe
   const { ticketId } = await params;
   const ticket = await getEmployeeTicket(ticketId);
   if (!ticket) notFound();
+  if (ticket.status === "on_hold") {
+    redirect("/employee/tickets");
+  }
   if (
     ticket.ownerId !== session.id &&
     ticket.createdById !== session.id &&

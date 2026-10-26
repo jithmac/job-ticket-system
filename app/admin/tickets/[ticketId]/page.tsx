@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { getAdminUser } from "@/lib/admin-db-data";
-import { departments, getClient, getEmployee, getEmployees, getTicket, getTickets, skillLevels } from "@/lib/db-data";
+import { departments, getClient, getEmployees, getTicket, getTickets, skillLevels } from "@/lib/db-data";
 import {
   activeSubtaskIndex,
-  daysRemaining,
   formatDateTime,
   phaseLabel,
-  remainingLabel,
   ticketCrew,
   ticketProgress,
   ticketsForClient,
@@ -16,6 +14,7 @@ import {
 import { ActivityLog } from "../../_components/activity-log";
 import { AddEmployeeForm } from "../../_components/add-employee-form";
 import { CrewManager } from "../../_components/crew-manager";
+import { SubtaskAssignment } from "../../_components/subtask-assignment";
 import { TicketControls } from "../../_components/ticket-controls";
 import { PageTitle, PhaseGrid } from "../../_components/ui";
 
@@ -75,6 +74,14 @@ export default async function AdminTicketPage({ params }: PageProps<"/admin/tick
           </>
         }
         title={ticket.title}
+        meta={
+          <>
+            <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">STATUS: {ticket.status.replace("_", " ").toUpperCase()}</span>
+            <span className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-amber-800">PRIORITY: {ticket.priority.toUpperCase()}</span>
+            <span className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-blue-800">HOLDER: {employeesById.get(ticket.ownerId)?.name ?? "—"}</span>
+            <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">END DATE: {formatDateTime(ticket.endDate)}</span>
+          </>
+        }
       />
 
       {/* Two Column Layout */}
@@ -197,54 +204,25 @@ export default async function AdminTicketPage({ params }: PageProps<"/admin/tick
             </div>
           </section>
 
-          <ActivityLog entries={ticket.activity} people={employees} author={adminUser} />
+          <ActivityLog key={ticket.activity.length} ticketId={ticket.id} entries={ticket.activity} people={employees} author={adminUser} />
         </div>
 
         {/* Right Column (Sidebar Metadata & Industrial Actions) */}
         <div className="lg:col-span-1 flex flex-col gap-6">
           <TicketControls
             status={ticket.status}
-            priority={ticket.priority}
             requests={ticket.priorityRequests}
-            category={ticket.category}
-            endDate={ticket.endDate}
-            holder={employeesById.get(ticket.ownerId)?.name ?? "—"}
+            ticketId={ticket.id}
           >
             {/* Server-rendered children slotted inside a client component */}
-            <CrewManager crew={crew} ownerId={ticket.ownerId} roster={employees} />
+            <CrewManager crew={crew} ownerId={ticket.ownerId} roster={employees} ticketId={ticket.id} />
+            <SubtaskAssignment ticketId={ticket.id} subtasks={ticket.subtasks} employees={crew} />
             <AddEmployeeForm
               activeCount={employees.filter((e) => e.status !== "off_duty").length}
               departments={departments}
               skillLevels={skillLevels}
             />
           </TicketControls>
-          {/* Job Telemetry Widget */}
-          <section className="bg-slate-900 text-slate-300 rounded p-4 font-label-mono text-xs border border-slate-800">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
-              <span className="text-slate-400 font-bold">JOB TELEMETRY</span>
-              <span className="text-safety-orange-bright text-[10px]">{progress}% COMPLETE</span>
-            </div>
-            <div className="space-y-1.5 text-[11px]">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Subtasks Done:</span>
-                <span className="text-slate-200">
-                  {ticket.subtasks.filter((s) => s.status === "done").length} / {ticket.subtasks.length}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Schedule:</span>
-                <span className={daysRemaining(ticket) < 0 && live ? "text-red-300" : "text-amber-400"}>{remainingLabel(ticket)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Asset Tag:</span>
-                <span className="text-slate-200">{ticket.assetTag}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Crew On Job:</span>
-                <span className="text-emerald-400">{crew.length} ASSIGNED</span>
-              </div>
-            </div>
-          </section>
         </div>
       </div>
     </>

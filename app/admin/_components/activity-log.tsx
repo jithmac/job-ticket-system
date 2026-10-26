@@ -4,23 +4,33 @@ import { useState } from "react";
 import { Icon } from "@/components/icon";
 import { formatDateTime } from "@/lib/format";
 import type { ActivityEntry, Employee } from "@/lib/types";
+import { addAdminActivity } from "../actions";
 
 /** "Activity & Operational Log" timeline with the admin log-update box. */
 export function ActivityLog({
   entries,
   people,
   author,
+  ticketId,
 }: {
   entries: ActivityEntry[];
+  ticketId: string;
   /** Employees referenced by the entries. */
   people: Employee[];
   author: { name: string; role: string };
 }) {
   const [log, setLog] = useState(entries);
   const [text, setText] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  function submit() {
+  async function submit() {
     if (!text.trim()) return;
+    const entryText = text.trim();
+    setSaving(true);
+    const result = await addAdminActivity({ ticketId, text: entryText });
+    setSaving(false);
+    if (!result.ok) return;
     const d = new Date();
     const p = (n: number) => String(n).padStart(2, "0");
     setLog((l) => [
@@ -31,7 +41,7 @@ export function ActivityLog({
         authorName: author.name,
         authorRole: author.role,
         at: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`,
-        text: text.trim(),
+        text: entryText,
         visibleToEmployees: true,
       },
     ]);
@@ -45,9 +55,11 @@ export function ActivityLog({
           <Icon name="history" className="text-slate-700 text-lg" />
           Activity &amp; Operational Log
         </h2>
-        <span className="text-xs font-label-mono text-slate-400">REALTIME SYNCED</span>
+        <button type="button" onClick={() => setExpanded((value) => !value)} className="text-xs font-label-mono text-slate-400 flex items-center gap-1">
+          {log.length} ENTRIES <Icon name={expanded ? "expand_less" : "expand_more"} className="text-base" />
+        </button>
       </div>
-      <div className="relative pl-5 border-l-2 border-slate-200 ml-3 mt-1 space-y-6">
+      {expanded && <div className="relative pl-5 border-l-2 border-slate-200 ml-3 mt-1 space-y-6">
         {log.length === 0 && <p className="text-xs font-label-mono text-slate-400">No activity logged yet.</p>}
         {log.map((a) => {
           const person = people.find((p) => p.id === a.authorId);
@@ -94,8 +106,8 @@ export function ActivityLog({
             </div>
           );
         })}
-      </div>
-      <div className="mt-2 pt-4 border-t border-slate-200 flex gap-3">
+      </div>}
+      {expanded && <div className="mt-2 pt-4 border-t border-slate-200 flex gap-3">
         <span className="w-8 h-8 rounded border border-slate-300 bg-slate-800 text-white flex items-center justify-center text-[10px] font-label-mono font-bold mt-0.5">
           {author.name
             .split(/\s+/)
@@ -121,15 +133,16 @@ export function ActivityLog({
             </button>
             <button
               type="button"
-              onClick={submit}
+              onClick={() => void submit()}
+              disabled={saving}
               className="px-4 py-1.5 bg-slate-dark hover:bg-slate-800 text-white rounded text-xs font-label-mono font-bold transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <Icon name="send" className="text-sm text-safety-orange" />
-              Log Update
+              {saving ? "Saving..." : "Log Update"}
             </button>
           </div>
         </div>
-      </div>
+      </div>}
     </section>
   );
 }

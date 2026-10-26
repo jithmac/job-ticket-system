@@ -170,14 +170,15 @@ export async function saveEmployeeTicketWorkspace(input: WorkspaceInput): Promis
         where: { id: input.ticketId },
         select: {
           id: true,
+          status: true,
           createdById: true,
           ownerId: true,
           crew: { select: { userId: true, canOpen: true } },
           subtasks: { select: { id: true } },
         },
       });
-
       if (!ticket) throw new Error("Ticket not found.");
+      if (ticket.status === "ON_HOLD") throw new Error("This ticket is currently on hold.");
 
       const membership = ticket.crew.find((member) => member.userId === session.id);
 
