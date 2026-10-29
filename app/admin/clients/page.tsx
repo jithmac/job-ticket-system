@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Form from "next/form";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { getClients } from "@/lib/db-data";
@@ -7,11 +8,32 @@ import { PageTitle, ProgressTrack, StatusPill } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Clients & Jobs" };
 
-export default async function AdminClientsPage() {
+export default async function AdminClientsPage({ searchParams }: PageProps<"/admin/clients">) {
   const clients = await getClients();
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim() : "";
+  const visibleClients = clients.filter((client) => {
+    if (!q) return true;
+    const searchable = [
+      client.id,
+      client.name,
+      client.facility,
+      client.address,
+      client.contractRef,
+      client.tier,
+      client.contactName,
+      client.contactRole,
+      client.contactEmail,
+      client.contactPhone,
+      client.accessLevel,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return searchable.includes(q.toLowerCase());
+  });
   const jobsByClient = new Map(
     await Promise.all(
-      clients.map(async (client) => [client.id, (await ticketsForClient(client.id)).sort((a, b) => b.startDate.localeCompare(a.startDate))] as const),
+      visibleClients.map(async (client) => [client.id, (await ticketsForClient(client.id)).sort((a, b) => b.startDate.localeCompare(a.startDate))] as const),
     ),
   );
   const employeeIds = [...jobsByClient.values()].flat().map((ticket) => ticket.ownerId);
@@ -26,8 +48,41 @@ export default async function AdminClientsPage() {
         }
         title="Clients & Jobs"
       />
+      <section className="mb-6 bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+        <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-headline-md font-bold text-slate-900">Client Directory</h2>
+            <p className="text-xs text-slate-500 font-label-mono mt-0.5">Search accounts, facilities, contacts, and contract references.</p>
+          </div>
+          <Form action="/admin/clients" className="flex gap-1.5 sm:w-96">
+            <div className="relative w-full">
+              <Icon name="search" className="absolute left-2.5 top-2 text-slate-400 text-sm" />
+              <input
+                name="q"
+                defaultValue={q}
+                type="search"
+                placeholder="Client, facility, contact, contract..."
+                className="form-input w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-label-mono text-slate-800 placeholder:text-slate-400 focus:border-safety-orange focus:ring-1 focus:ring-safety-orange outline-none"
+              />
+            </div>
+            <button type="submit" className="bg-slate-dark hover:bg-slate-800 text-white px-3 py-1.5 rounded text-xs font-label-mono font-bold">
+              Search
+            </button>
+          </Form>
+        </div>
+        {q && (
+          <div className="px-4 py-2 bg-orange-50/50 border-t border-slate-100 text-xs font-label-mono text-slate-600 flex items-center justify-between gap-3">
+            <span>
+              {visibleClients.length} result{visibleClients.length === 1 ? "" : "s"} for “<span className="font-bold text-slate-900">{q}</span>”
+            </span>
+            <Link href="/admin/clients" className="text-safety-orange font-semibold hover:underline">
+              Clear search
+            </Link>
+          </div>
+        )}
+      </section>
       <div className="flex flex-col gap-6">
-        {clients.map((c) => {
+        {visibleClients.map((c) => {
           const jobs = jobsByClient.get(c.id) ?? [];
           const active = jobs.filter((j) => j.status !== "completed").length;
           return (
@@ -123,6 +178,15 @@ export default async function AdminClientsPage() {
             </section>
           );
         })}
+        {visibleClients.length === 0 && (
+          <div className="bg-white border border-dashed border-slate-300 rounded p-10 text-center">
+            <Icon name="search_off" className="text-3xl text-slate-400" />
+            <p className="mt-2 text-sm font-semibold text-slate-700">No clients match your search.</p>
+            <Link href="/admin/clients" className="mt-1 inline-block text-xs font-label-mono text-safety-orange hover:underline">
+              Clear search and show all clients
+            </Link>
+          </div>
+        )}
       </div>
     </>
   );
