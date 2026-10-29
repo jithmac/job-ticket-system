@@ -186,8 +186,11 @@ export default async function AdminTicketPage({ params }: PageProps<"/admin/tick
             <div className="flex flex-wrap gap-3">
               {ticket.attachments.length === 0 && <p className="text-xs font-label-mono text-slate-400">No attachments.</p>}
               {ticket.attachments.map((a) => (
-                <div
+                <a
                   key={a.id}
+                  href={`/api/attachments/${a.id}`}
+                  target="_blank"
+                  rel="noreferrer"
                   className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded hover:border-safety-orange hover:bg-orange-50/20 transition-all cursor-pointer group flex-1 min-w-[220px]"
                 >
                   <div className="bg-white border border-slate-200 w-10 h-10 rounded flex items-center justify-center text-slate-600 group-hover:text-safety-orange group-hover:border-safety-orange/40 transition-colors">
@@ -198,8 +201,8 @@ export default async function AdminTicketPage({ params }: PageProps<"/admin/tick
                     <span className="text-[11px] font-label-mono-sm text-slate-500">
                       {a.size} • {a.label}
                     </span>
-                  </div>
                 </div>
+                </a>
               ))}
             </div>
           </section>

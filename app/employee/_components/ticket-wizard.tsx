@@ -26,6 +26,7 @@ export interface DraftAttachment {
   key: string;
   name: string;
   size: string;
+  pendingId?: string;
 }
 
 export interface TicketDraft {
@@ -165,12 +166,14 @@ export function TicketWizard({
   const [submitted, setSubmitted] = useState(false);
   const [savedTicketId, setSavedTicketId] = useState(ticketId);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [crewQuery, setCrewQuery] = useState("");
   const keySeq = useRef(100);
   const fileInput = useRef<HTMLInputElement>(null);
+  const fileStore = useRef(new Map<string, File>());
 
   const checks = stepChecks(draft, confirmed);
   const stepValid = (i: number) => checks[i].every((c) => c.ok);
@@ -210,11 +213,22 @@ export function TicketWizard({
     }));
   }
 
-  function addFiles(files: FileList | null) {
+  async function addFiles(files: FileList | null) {
     if (!files) return;
-    const added = Array.from(files).map((f) => {
+    const selected = Array.from(files);
+    if (selected.some((file) => file.size > 25 * 1024 * 1024)) {
+      setSubmitError("Each attachment must be 25 MB or smaller.");
+      return;
+    }
+    const added = selected.map((file) => {
       keySeq.current += 1;
-      return { key: `file-${keySeq.current}`, name: f.name, size: formatBytes(f.size) };
+      const key = `file-${keySeq.current}`;
+      fileStore.current.set(key, file);
+      return {
+        key,
+        name: file.name,
+        size: formatBytes(file.size),
+      };
     });
     setDraft((d) => ({ ...d, attachments: [...d.attachments, ...added] }));
   }
@@ -240,6 +254,24 @@ export function TicketWizard({
     setMaxReached((m) => Math.max(m, target));
   }
 
+  async function uploadFiles(onProgress: (completed: number, total: number) => void) {
+    const pending = draft.attachments.filter((attachment) => !attachment.pendingId);
+    const uploaded = new Map<string, string>();
+    for (let index = 0; index < pending.length; index += 1) {
+      const attachment = pending[index];
+      const file = fileStore.current.get(attachment.key);
+      if (!file) throw new Error(`The file "${attachment.name}" is no longer available. Please select it again.`);
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await fetch("/api/attachments/upload", { method: "POST", body: formData });
+      if (!result.ok) throw new Error((await result.json()).error || "File upload failed.");
+      const uploadedAttachment = (await result.json()) as { id: string };
+      uploaded.set(attachment.key, uploadedAttachment.id);
+      onProgress(index + 1, pending.length);
+    }
+    return uploaded;
+  }
+
   function submit() {
     if (!stepValid(3)) {
       setShowErrors((s) => s.map((v, i) => (i === 3 ? true : v)));
@@ -247,6 +279,15 @@ export function TicketWizard({
     }
     setSubmitError(null);
     startTransition(async () => {
+      let uploaded = new Map<string, string>();
+      try {
+        uploaded = await uploadFiles((completed, total) => setUploadProgress({ completed, total }));
+      } catch (error) {
+        setSubmitError(error instanceof Error ? error.message : "File upload failed.");
+        setUploadProgress(null);
+        return;
+      }
+      setUploadProgress(null);
       const result = await saveEmployeeTicket({
         mode,
         ticketId,
@@ -259,7 +300,10 @@ export function TicketWizard({
         description: draft.description,
         participantIds: draft.participantIds,
         subtasks: draft.subtasks,
-        attachments: draft.attachments,
+        attachments: draft.attachments.map((attachment) => ({
+          ...attachment,
+          pendingId: attachment.pendingId ?? uploaded.get(attachment.key),
+        })),
       });
       if (!result.ok) {
         setSubmitError(result.error);
@@ -813,7 +857,7 @@ export function TicketWizard({
                   onDrop={(e) => {
                     e.preventDefault();
                     setDragging(false);
-                    addFiles(e.dataTransfer.files);
+                    void addFiles(e.dataTransfer.files);
                   }}
                   className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center gap-2 text-center cursor-pointer transition-colors ${
                     dragging ? "border-safety-orange bg-orange-50/50" : "border-slate-border bg-slate-surface hover:border-slate-400"
@@ -831,7 +875,7 @@ export function TicketWizard({
                     multiple
                     className="hidden"
                     onChange={(e) => {
-                      addFiles(e.target.files);
+                      void addFiles(e.target.files);
                       e.target.value = "";
                     }}
                   />
@@ -1006,6 +1050,20 @@ export function TicketWizard({
                 </button>
               )}
             </div>
+            {uploadProgress && (
+              <div className="w-full mt-3" aria-live="polite">
+                <div className="flex justify-between text-[11px] font-label-mono text-on-surface-variant mb-1">
+                  <span>Uploading attachments</span>
+                  <span>{uploadProgress.completed}/{uploadProgress.total}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className="h-full bg-safety-orange transition-all"
+                    style={{ width: `${Math.round((uploadProgress.completed / uploadProgress.total) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
             {submitError && <p className="text-xs text-error font-label-mono">{submitError}</p>}
           </div>
         </form>

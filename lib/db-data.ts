@@ -39,10 +39,18 @@ const clientSelect = {
   safetyProtocol: true,
 } satisfies Prisma.CustomerSelect;
 
+const attachmentMetadataSelect = {
+  id: true,
+  name: true,
+  size: true,
+  kind: true,
+  label: true,
+} satisfies Prisma.AttachmentSelect;
+
 const ticketInclude = {
   crew: { include: { user: { select: employeeSelect } } },
   subtasks: { include: { assignees: true } },
-  attachments: true,
+  attachments: { select: attachmentMetadataSelect },
   activities: true,
   handovers: { include: { fromUser: { select: { name: true } }, toUser: { select: { name: true } } } },
   priorityRequests: true,
@@ -53,7 +61,7 @@ const ticketInclude = {
 const employeeTicketInclude = {
   crew: { include: { user: { select: employeeSelect } } },
   subtasks: { include: { assignees: true } },
-  attachments: true,
+  attachments: { select: attachmentMetadataSelect },
   activities: true,
   handovers: { include: { fromUser: { select: { name: true } }, toUser: { select: { name: true } } } },
   priorityRequests: true,

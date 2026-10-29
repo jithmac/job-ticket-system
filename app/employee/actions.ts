@@ -20,7 +20,7 @@ type TicketMutationInput = {
   description: string;
   participantIds: string[];
   subtasks: Array<{ key: string; title: string; description: string; assigneeId: string; estimate: string }>;
-  attachments: Array<{ key: string; name: string; size: string }>;
+  attachments: Array<{ key: string; name: string; size: string; pendingId?: string }>;
 };
 
 type TicketMutationResult = { ok: true; ticketId: string } | { ok: false; error: string };
@@ -66,15 +66,6 @@ function workspaceDate(value: string | undefined) {
   return result;
 }
 
-function attachmentKind(name: string) {
-  const extension = name.split(".").pop()?.toLowerCase();
-  if (extension === "pdf") return { kind: "pdf", label: "PDF Document" };
-  if (["jpg", "jpeg", "png", "gif", "webp"].includes(extension ?? "")) return { kind: "image", label: "Image" };
-  if (["xls", "xlsx", "csv"].includes(extension ?? "")) return { kind: "sheet", label: "Spreadsheet" };
-  if (["log", "txt"].includes(extension ?? "")) return { kind: "log", label: "Log File" };
-  return { kind: "doc", label: "Document" };
-}
-
 function validateInput(input: TicketMutationInput) {
   if (input.title.trim().length < 5) throw new Error("Enter a ticket title with at least 5 characters.");
   if (!input.clientId || !input.category) throw new Error("Select a client and category.");
@@ -82,6 +73,21 @@ function validateInput(input: TicketMutationInput) {
   if (!input.startDate || !input.endDate || input.endDate < input.startDate) throw new Error("Choose a valid work window.");
   if (input.subtasks.length === 0 || input.subtasks.some((subtask) => !subtask.title.trim())) throw new Error("Add at least one subtask with a title.");
   if (input.participantIds.length === 0) throw new Error("Assign at least one participating employee.");
+}
+
+async function removeStagedAttachments(input: TicketMutationInput, userId: string) {
+  const pendingIds = input.attachments
+    .map((attachment) => attachment.pendingId)
+    .filter((id): id is string => Boolean(id));
+  if (pendingIds.length === 0) return;
+
+  await db.attachment.deleteMany({
+    where: {
+      id: { in: pendingIds },
+      ticketId: { equals: null },
+      uploadedById: userId,
+    },
+  });
 }
 
 export async function saveEmployeeTicket(input: TicketMutationInput): Promise<TicketMutationResult> {
@@ -106,6 +112,10 @@ export async function saveEmployeeTicket(input: TicketMutationInput): Promise<Ti
         const existing = await tx.ticket.findUnique({ where: { id: input.ticketId }, select: { id: true, createdById: true, ownerId: true } });
         if (!existing) throw new Error("Ticket not found.");
         if (existing.createdById !== session.id && existing.ownerId !== session.id) throw new Error("Only the ticket creator or current holder can update this ticket.");
+        const retainedIds = input.attachments.map((attachment) => attachment.pendingId ?? attachment.key);
+        await tx.attachment.deleteMany({
+          where: { ticketId: input.ticketId, id: { notIn: retainedIds } },
+        });
         await tx.ticket.update({
           where: { id: input.ticketId },
           data: {
@@ -116,11 +126,17 @@ export async function saveEmployeeTicket(input: TicketMutationInput): Promise<Ti
               id: `${input.ticketId}-${randomUUID()}`, title: subtask.title.trim(), description: subtask.description.trim(),
               estimate: subtask.estimate.trim() || "—", status: "PENDING", assignees: { create: [{ userId: subtask.assigneeId }] },
             })) },
-            attachments: { deleteMany: {}, create: input.attachments.map((attachment) => ({
-              id: `${input.ticketId}-${randomUUID()}`, name: attachment.name, size: attachment.size, ...attachmentKind(attachment.name),
-            })) },
           },
         });
+        const pendingIds = input.attachments.map((attachment) => attachment.pendingId).filter((id): id is string => Boolean(id));
+        if (pendingIds.length > 0) {
+          const pending = await tx.attachment.findMany({
+            where: { id: { in: pendingIds }, ticketId: { equals: null }, uploadedById: session.id },
+            select: { id: true },
+          });
+          if (pending.length !== pendingIds.length) throw new Error("One or more uploaded files are invalid.");
+          await tx.attachment.updateMany({ where: { id: { in: pendingIds } }, data: { ticketId: input.ticketId, uploadedById: null } });
+        }
         await tx.activity.create({
           data: {
             id: `${input.ticketId}-${randomUUID()}`,
@@ -146,18 +162,29 @@ export async function saveEmployeeTicket(input: TicketMutationInput): Promise<Ti
             id: `${ticketId}-${randomUUID()}`, title: subtask.title.trim(), description: subtask.description.trim(),
             estimate: subtask.estimate.trim() || "—", status: "PENDING", assignees: { create: [{ userId: subtask.assigneeId }] },
           })) },
-          attachments: { create: input.attachments.map((attachment) => ({
-            id: `${ticketId}-${randomUUID()}`, name: attachment.name, size: attachment.size, ...attachmentKind(attachment.name),
-          })) },
           activities: { create: { id: `${ticketId}-${randomUUID()}`, kind: "EMPLOYEE", authorId: session.id, authorName: session.name, authorRole: "Employee", text: `Ticket created and dispatched by ${session.name}.`, visibleToEmployees: true } },
         },
       });
+      const pendingIds = input.attachments.map((attachment) => attachment.pendingId).filter((id): id is string => Boolean(id));
+      if (pendingIds.length > 0) {
+        const pending = await tx.attachment.findMany({
+          where: { id: { in: pendingIds }, ticketId: { equals: null }, uploadedById: session.id },
+          select: { id: true },
+        });
+        if (pending.length !== pendingIds.length) throw new Error("One or more uploaded files are invalid.");
+        await tx.attachment.updateMany({ where: { id: { in: pendingIds } }, data: { ticketId, uploadedById: null } });
+      }
       return ticketId;
     }, { timeout: 10000 });
     revalidateTag("tickets", { expire: 0 });
     revalidatePath("/employee"); revalidatePath("/employee/tickets"); revalidatePath("/employee/history"); refresh();
     return { ok: true, ticketId: result };
   } catch (error) {
+    try {
+      await removeStagedAttachments(input, session.id);
+    } catch (cleanupError) {
+      console.error("Failed to remove staged attachments after ticket transaction failure.", cleanupError);
+    }
     return { ok: false, error: mutationError(error, "Unable to save the ticket.") };
   }
 }

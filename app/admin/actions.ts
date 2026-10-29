@@ -51,7 +51,10 @@ export async function deleteAdminTicket(ticketId: string): Promise<AdminMutation
     await requireRole([UserRole.ADMIN]);
     const ticket = await db.ticket.findUnique({ where: { id: ticketId }, select: { id: true } });
     if (!ticket) throw new Error("Ticket not found.");
-    await db.ticket.delete({ where: { id: ticket.id } });
+    await db.$transaction(async (tx) => {
+      await tx.attachment.deleteMany({ where: { ticketId: ticket.id } });
+      await tx.ticket.delete({ where: { id: ticket.id } });
+    });
     revalidateTag("tickets", { expire: 0 });
     revalidateTag("employee-tickets", { expire: 0 });
     revalidateTag("admin-overview", { expire: 0 });

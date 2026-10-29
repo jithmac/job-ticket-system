@@ -155,13 +155,16 @@ model SubtaskAssignee {
 }
 
 model Attachment {
-  id       String @id
-  ticketId String
-  name     String
-  size     String
-  kind     String
-  label    String
-  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id        String   @id
+  ticketId  String?
+  uploadedById String?
+  name      String
+  size      String
+  kind      String
+  label     String
+  mimeType  String   @default("application/octet-stream")
+  content   Bytes?   @db.ByteA
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 }
 
 model Activity {
