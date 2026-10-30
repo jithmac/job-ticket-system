@@ -285,7 +285,6 @@ export async function TicketDossier({ ticket }: { ticket: Ticket }) {
       <CareNotes
         key={`notes-${ticket.id}`}
         ticketId={ticket.id}
-        contactName={client.contactName}
         agent={careAgent}
         initial={[...ticket.activity].sort((a, b) => b.at.localeCompare(a.at))}
       />
