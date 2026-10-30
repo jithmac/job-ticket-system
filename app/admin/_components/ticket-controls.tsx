@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { formatDateTime, priorityLabel } from "@/lib/format";
 import type { PriorityRequest, TicketStatus } from "@/lib/types";
-import { deleteAdminTicket, setAdminTicketHold } from "../actions";
+import { decidePriorityRequest, deleteAdminTicket, setAdminTicketHold } from "../actions";
 
 /** Operational controls + priority-change requests + ticket properties (admin ticket sidebar). */
 export function TicketControls({
@@ -27,8 +27,11 @@ export function TicketControls({
   const router = useRouter();
   const onHold = status === "on_hold";
 
-  function decide(id: string, decision: "approved" | "declined") {
-    setRequests((list) => list.map((r) => (r.id === id ? { ...r, status: decision } : r)));
+  async function decide(id: string, decision: "approved" | "declined") {
+    const result = await decidePriorityRequest({ requestId: id, decision });
+    if (result.ok) {
+      setRequests((list) => list.map((r) => (r.id === id ? { ...r, status: decision } : r)));
+    }
   }
 
   return (
@@ -107,14 +110,14 @@ export function TicketControls({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => decide(r.id, "approved")}
+                    onClick={() => void decide(r.id, "approved")}
                     className="bg-slate-dark hover:bg-slate-800 text-white py-1.5 rounded text-[11px] font-label-mono font-bold flex items-center justify-center gap-1"
                   >
                     <Icon name="check" className="text-sm text-safety-orange" /> Approve
                   </button>
                   <button
                     type="button"
-                    onClick={() => decide(r.id, "declined")}
+                    onClick={() => void decide(r.id, "declined")}
                     className="border border-slate-300 bg-white hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-slate-700 py-1.5 rounded text-[11px] font-label-mono font-semibold flex items-center justify-center gap-1"
                   >
                     <Icon name="close" className="text-sm" /> Decline

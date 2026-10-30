@@ -94,6 +94,7 @@ export interface PriorityRequest {
   from: Priority;
   to: Priority;
   reason: string;
+  customerCareId?: string;
   requestedBy: string;
   at: string;
   status: "pending" | "approved" | "declined";

@@ -32,6 +32,7 @@ const overviewTicketSelect = {
 
 const overviewPriorityRequestSelect = {
   id: true,
+  customerCareId: true,
   from: true,
   to: true,
   status: true,
@@ -77,6 +78,7 @@ export type AdminOverviewData = {
   tickets: AdminOverviewTicket[];
   priorityRequests: Array<{
     id: string;
+    customerCareId?: string;
     ticketId: string;
     from: Priority;
     to: Priority;
@@ -145,6 +147,7 @@ const getAdminOverviewCached = unstable_cache(
       })),
       priorityRequests: priorityRequests.map((request) => ({
         id: request.id,
+        customerCareId: request.customerCareId ?? undefined,
         ticketId: request.ticket.id,
         from: enumValue<Priority>(request.from),
         to: enumValue<Priority>(request.to),

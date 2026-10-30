@@ -174,6 +174,7 @@ function mapTicket(ticket: DbTicket | DbEmployeeTicket): Ticket {
       from: request.from.toLowerCase() as Ticket["priorityRequests"][number]["from"],
       to: request.to.toLowerCase() as Ticket["priorityRequests"][number]["to"],
       reason: request.reason,
+      customerCareId: request.customerCareId ?? undefined,
       requestedBy: request.requestedBy,
       at: date(request.at),
       status: request.status as Ticket["priorityRequests"][number]["status"],

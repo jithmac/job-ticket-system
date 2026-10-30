@@ -60,6 +60,7 @@ model User {
   participants     TicketCrew[]
   subtaskAssignees SubtaskAssignee[]
   activities       Activity[]
+  priorityRequests PriorityRequest[] @relation("CarePriorityRequests")
   handoverNotes    HandoverNote[]       @relation("HandoverAuthor")
   handoverRecipients HandoverNote[]     @relation("HandoverRecipient")
   customer         Customer?
@@ -196,15 +197,20 @@ model HandoverNote {
 }
 
 model PriorityRequest {
-  id          String   @id
-  ticketId    String
-  from        Priority
-  to          Priority
-  reason      String
-  requestedBy String
-  status      String
-  at          DateTime @default(now())
-  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id            String   @id
+  ticketId      String
+  customerCareId String?
+  from          Priority
+  to            Priority
+  reason        String
+  requestedBy   String
+  status        String
+  at            DateTime @default(now())
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  customerCare  User?    @relation("CarePriorityRequests", fields: [customerCareId], references: [id])
+
+  @@index([ticketId, status])
+  @@index([customerCareId])
 }
 
 model Billing {

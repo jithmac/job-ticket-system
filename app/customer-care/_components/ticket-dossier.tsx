@@ -290,7 +290,7 @@ export async function TicketDossier({ ticket }: { ticket: Ticket }) {
       />
 
       {/* Section: Priority change request */}
-      <PriorityRequestForm key={`prio-${ticket.id}`} current={ticket.priority} initial={ticket.priorityRequests} agent={careAgent} />
+      <PriorityRequestForm key={`prio-${ticket.id}`} ticketId={ticket.id} current={ticket.priority} initial={ticket.priorityRequests} />
     </>
   );
 }

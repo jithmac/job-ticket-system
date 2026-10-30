@@ -4,39 +4,37 @@ import { useState } from "react";
 import { Icon } from "@/components/icon";
 import { formatDateTime, priorityLabel, priorityOrder } from "@/lib/format";
 import type { Priority, PriorityRequest } from "@/lib/types";
+import { addPriorityRequest } from "../actions";
 import { PriorityTag, SectionCard, SectionHeading } from "./ui";
 
 /** Customer care can't change priority directly — they raise a request for an admin to approve. */
 export function PriorityRequestForm({
   current,
+  ticketId,
   initial,
-  agent,
 }: {
   current: Priority;
+  ticketId: string;
   initial: PriorityRequest[];
-  agent: { id: string; name: string };
 }) {
   const [requests, setRequests] = useState(initial);
   const [to, setTo] = useState<Priority | "">("");
   const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const pending = requests.some((r) => r.status === "pending");
 
-  function submit() {
+  async function submit() {
     if (!to || to === current || reason.trim().length < 10) return;
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, "0");
-    setRequests((r) => [
-      {
-        id: `PR-new-${r.length}`,
-        from: current,
-        to,
-        reason: reason.trim(),
-        requestedBy: `${agent.name} (${agent.id})`,
-        at: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`,
-        status: "pending",
-      },
-      ...r,
-    ]);
+    setSaving(true);
+    setError("");
+    const result = await addPriorityRequest({ ticketId, from: current, to, reason });
+    setSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setRequests((requests) => [result.request, ...requests]);
     setTo("");
     setReason("");
   }
@@ -87,15 +85,16 @@ export function PriorityRequestForm({
             />
             <button
               type="button"
-              onClick={submit}
-              disabled={!to || reason.trim().length < 10}
+              onClick={() => void submit()}
+              disabled={saving || !to || reason.trim().length < 10}
               className="self-end px-space-md py-2 bg-safety-orange hover:bg-safety-orange-bright text-on-primary rounded font-label-mono text-label-mono font-bold transition-all shadow-sm flex items-center gap-1 disabled:opacity-50"
             >
-              <Icon name="send" className="text-[16px]" /> Submit Request
+              <Icon name="send" className="text-[16px]" /> {saving ? "Saving..." : "Submit Request"}
             </button>
           </div>
         </div>
       )}
+      {error && <p role="alert" className="text-sm text-error">{error}</p>}
       {requests.length > 0 && (
         <div className="flex flex-col gap-space-xs pt-space-xs border-t border-slate-border/30">
           {requests.map((r) => (

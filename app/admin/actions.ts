@@ -91,6 +91,52 @@ export async function addAdminActivity(input: { ticketId: string; text: string }
   }
 }
 
+export async function decidePriorityRequest(input: {
+    requestId: string;
+    decision: "approved" | "declined";
+  }): Promise<AdminMutationResult> {
+    try {
+      const admin = await requireRole([UserRole.ADMIN]);
+      await db.$transaction(async (tx) => {
+        const request = await tx.priorityRequest.findUnique({
+          where: { id: input.requestId },
+          select: { id: true, ticketId: true, from: true, to: true, status: true },
+        });
+        if (!request) throw new Error("Priority request not found.");
+        if (request.status !== "pending") throw new Error("This priority request has already been reviewed.");
+
+        await tx.priorityRequest.update({
+          where: { id: request.id },
+          data: { status: input.decision },
+        });
+        if (input.decision === "approved") {
+          const ticket = await tx.ticket.findUnique({ where: { id: request.ticketId }, select: { id: true, priority: true } });
+          if (!ticket) throw new Error("Ticket not found.");
+          if (ticket.priority !== request.from) throw new Error("The ticket priority has changed since this request was submitted.");
+          await tx.ticket.update({ where: { id: ticket.id }, data: { priority: request.to } });
+          await tx.activity.create({
+            data: {
+              id: `${ticket.id}-${randomUUID()}`,
+              ticketId: ticket.id,
+              kind: "ADMIN",
+              authorId: admin.id,
+              authorName: admin.name,
+              authorRole: admin.title ?? "Administrator",
+              text: `Priority changed from ${request.from.toLowerCase()} to ${request.to.toLowerCase()} after admin approval.`,
+              visibleToEmployees: true,
+            },
+          });
+        }
+      });
+      revalidateTag("tickets", { expire: 0 });
+      revalidateTag("employee-tickets", { expire: 0 });
+      revalidateTag("admin-overview", { expire: 0 });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: message(error, "Unable to review priority request.") };
+  }
+}
+
 export async function addAdminTicketEmployee(input: { ticketId: string; userId: string }): Promise<AdminMutationResult> {
   try {
     const admin = await db.user.findUnique({ where: { id: "ADMIN-001" }, select: { id: true, name: true, title: true } });
