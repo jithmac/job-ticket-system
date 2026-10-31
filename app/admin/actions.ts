@@ -12,6 +12,64 @@ function message(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+export type NewAdminClientInput = {
+  name: string;
+  facility: string;
+  address: string;
+  contractRef: string;
+  tier: string;
+  contactName: string;
+  contactRole: string;
+  contactEmail: string;
+  contactPhone: string;
+  accessLevel: string;
+  safetyProtocol: string;
+};
+
+function requiredClientField(value: string, label: string) {
+  const trimmed = value.trim();
+  if (!trimmed) throw new Error(`${label} is required.`);
+  return trimmed;
+}
+
+export async function addAdminClient(input: NewAdminClientInput): Promise<AdminMutationResult & { clientId?: string }> {
+  try {
+    await requireRole([UserRole.ADMIN]);
+    const client = {
+      name: requiredClientField(input.name, "Client name"),
+      facility: requiredClientField(input.facility, "Facility"),
+      address: requiredClientField(input.address, "Address"),
+      contractRef: requiredClientField(input.contractRef, "Contract reference"),
+      tier: requiredClientField(input.tier, "Service tier"),
+      contactName: requiredClientField(input.contactName, "Contact name"),
+      contactRole: requiredClientField(input.contactRole, "Contact role"),
+      contactEmail: requiredClientField(input.contactEmail, "Contact email"),
+      contactPhone: requiredClientField(input.contactPhone, "Contact phone"),
+      accessLevel: requiredClientField(input.accessLevel, "Access level"),
+      safetyProtocol: requiredClientField(input.safetyProtocol, "Safety protocol"),
+    };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client.contactEmail)) throw new Error("Enter a valid contact email.");
+
+    const created = await db.$transaction(async (tx) => {
+      const existing = await tx.customer.findMany({
+        where: { id: { startsWith: "CL-" } },
+        select: { id: true },
+      });
+      const nextNumber = existing.reduce((highest, item) => {
+        const number = Number(item.id.slice(3));
+        return Number.isInteger(number) ? Math.max(highest, number) : highest;
+      }, 1000) + 1;
+      return tx.customer.create({ data: { id: `CL-${String(nextNumber).padStart(4, "0")}`, ...client }, select: { id: true } });
+    });
+
+    revalidateTag("clients", { expire: 0 });
+    revalidateTag("admin-overview", { expire: 0 });
+    return { ok: true, clientId: created.id };
+  } catch (error) {
+    return { ok: false, error: message(error, "Unable to add client.") };
+  }
+}
+
 export async function setAdminTicketHold(input: { ticketId: string; hold: boolean }): Promise<AdminMutationResult> {
   try {
     const admin = await requireRole([UserRole.ADMIN]);

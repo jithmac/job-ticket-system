@@ -5,6 +5,7 @@ import { Icon } from "@/components/icon";
 import { getClients } from "@/lib/db-data";
 import { formatDate, getEmployee, remainingLabel, ticketProgress, ticketsForClient } from "@/lib/tickets";
 import { PageTitle, ProgressTrack, StatusPill } from "../_components/ui";
+import { AddClientForm } from "../_components/add-client-form";
 
 export const metadata: Metadata = { title: "Clients & Jobs" };
 
@@ -48,6 +49,7 @@ export default async function AdminClientsPage({ searchParams }: PageProps<"/adm
         }
         title="Clients & Jobs"
       />
+      <AddClientForm />
       <section className="mb-6 bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
         <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
