@@ -45,13 +45,15 @@ each job.
 2. Set `RESEND_API_KEY` to your Resend API key. The default sender is
    `onboarding@resend.dev`; set `RESEND_FROM_EMAIL` when using a verified
    sender domain.
-3. Run `npm run db:generate`.
-4. Create the database tables with `npm run db:migrate -- --name init`.
-5. Set unique values for `AUTH_SECRET`, `ADMIN_INITIAL_PASSWORD`,
+3. Set `FITSMS_API_KEY` and `FITSMS_SENDER_ID` for SMS notifications. The
+   example values are placeholders; replace them before enabling live delivery.
+4. Run `npm run db:generate`.
+5. Create the database tables with `npm run db:migrate -- --name init`.
+6. Set unique values for `AUTH_SECRET`, `ADMIN_INITIAL_PASSWORD`,
    `EMPLOYEE_INITIAL_PASSWORD`, and `CARE_INITIAL_PASSWORD`. Passwords must be
    at least 12 characters and include uppercase, lowercase, and numeric
    characters.
-6. Load the existing demo records with `npm run db:seed`.
+7. Load the existing demo records with `npm run db:seed`.
 
 Users sign in through `/login` with the email stored in `User.email`. Sessions
 are signed, HttpOnly cookies and workspace access is enforced on the server.
@@ -61,6 +63,9 @@ the Employees page; passwords are stored only as salted scrypt hashes.
 When an employee creates a ticket, the customer email in `Customer.contactEmail`
 receives a simple "Ticket created" notification through Resend. Email delivery
 failures do not undo ticket creation and are shown in the employee confirmation.
+The customer phone in `Customer.contactPhone` also receives a Fitsms SMS with
+the ticket reference and customer link. SMS delivery failures likewise do not
+undo ticket creation and are shown in the employee confirmation.
 
 Every seeded ticket gets a unique `publicToken`. Its shareable URL is
 `NEXT_PUBLIC_APP_URL/customer/jobs/<publicToken>`. The same token is available
