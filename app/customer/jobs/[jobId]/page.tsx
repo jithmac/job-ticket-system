@@ -19,7 +19,9 @@ import { getTicketByPublicToken } from "@/lib/db-data";
 import { DocumentsHub } from "../../_components/documents-hub";
 import { JobHero } from "../../_components/job-hero";
 
-/** Customers only ever get pages for their own jobs. */
+export const dynamicParams = true;
+
+/** Job IDs are scoped to the demo customer; opaque public tokens identify their own ticket. */
 export async function generateStaticParams() {
   const tickets = await getTicketsForClient(currentClientId);
   return tickets.flatMap((t) => [
@@ -30,15 +32,16 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/customer/jobs/[jobId]">): Promise<Metadata> {
   const { jobId } = await params;
-  return { title: (await getTicketByJobId(jobId))?.title ?? jobId };
+  return { title: (await getTicketByPublicToken(jobId))?.title ?? (await getTicketByJobId(jobId))?.title ?? jobId };
 }
 
 const lgCols: Record<number, string> = { 1: "lg:grid-cols-1", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4" };
 
 export default async function CustomerJobPage({ params }: PageProps<"/customer/jobs/[jobId]">) {
   const { jobId } = await params;
-  const job = (await getTicketByJobId(jobId)) ?? (await getTicketByPublicToken(jobId));
-  if (!job || job.clientId !== currentClientId) notFound();
+  const publicJob = await getTicketByPublicToken(jobId);
+  const job = publicJob ?? (await getTicketByJobId(jobId));
+  if (!job || (!publicJob && job.clientId !== currentClientId)) notFound();
 
   const [resolvedClient, crew, careAgent] = await Promise.all([getClient(job.clientId), ticketCrew(job), getCareAgent()]);
   if (!resolvedClient) throw new Error(`Customer ${job.clientId} was not found for ticket ${job.id}.`);

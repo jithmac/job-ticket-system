@@ -6,6 +6,8 @@ import { revalidatePath, revalidateTag, refresh } from "next/cache";
 import { Priority, TicketStatus, UserRole } from "@prisma/client";
 import { requireRole } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { sendTicketCreatedEmail } from "@/lib/email";
+import { publicJobUrl } from "@/lib/public-links";
 import { getNextTicketIdentifiers } from "@/lib/ticket-identifiers";
 
 type TicketMutationInput = {
@@ -23,7 +25,7 @@ type TicketMutationInput = {
   attachments: Array<{ key: string; name: string; size: string; pendingId?: string }>;
 };
 
-type TicketMutationResult = { ok: true; ticketId: string } | { ok: false; error: string };
+type TicketMutationResult = { ok: true; ticketId: string; emailError?: string } | { ok: false; error: string };
 type WorkspaceSubtaskInput = {
   id: string;
   title: string;
@@ -94,7 +96,7 @@ export async function saveEmployeeTicket(input: TicketMutationInput): Promise<Ti
   const session = await requireRole([UserRole.EMPLOYEE]);
   try {
     validateInput(input);
-    const client = await db.customer.findUnique({ where: { id: input.clientId }, select: { id: true } });
+    const client = await db.customer.findUnique({ where: { id: input.clientId }, select: { id: true, name: true, contactEmail: true } });
     if (!client) throw new Error("The selected client no longer exists.");
     const result = await db.$transaction(async (tx) => {
       const employees = await tx.user.findMany({
@@ -176,9 +178,29 @@ export async function saveEmployeeTicket(input: TicketMutationInput): Promise<Ti
       }
       return ticketId;
     }, { timeout: 10000 });
+    let emailError: string | undefined;
+    if (input.mode === "create") {
+      try {
+        const createdTicket = await db.ticket.findUnique({
+          where: { id: result },
+          select: { title: true, publicToken: true },
+        });
+        if (!createdTicket) throw new Error("The created ticket could not be found for email notification.");
+        await sendTicketCreatedEmail({
+          recipient: client.contactEmail,
+          clientName: client.name,
+          jobTitle: createdTicket.title,
+          ticketId: result,
+          followUpLink: publicJobUrl(createdTicket.publicToken),
+        });
+      } catch (error) {
+        emailError = error instanceof Error ? error.message : "Unable to send the ticket-created email.";
+        console.error("Ticket was created, but the customer notification email failed.", error);
+      }
+    }
     revalidateTag("tickets", { expire: 0 });
     revalidatePath("/employee"); revalidatePath("/employee/tickets"); revalidatePath("/employee/history"); refresh();
-    return { ok: true, ticketId: result };
+    return { ok: true, ticketId: result, emailError };
   } catch (error) {
     try {
       await removeStagedAttachments(input, session.id);

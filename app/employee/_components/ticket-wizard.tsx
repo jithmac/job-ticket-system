@@ -166,6 +166,7 @@ export function TicketWizard({
   const [submitted, setSubmitted] = useState(false);
   const [savedTicketId, setSavedTicketId] = useState(ticketId);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
@@ -278,6 +279,7 @@ export function TicketWizard({
       return;
     }
     setSubmitError(null);
+    setEmailWarning(null);
     startTransition(async () => {
       let uploaded = new Map<string, string>();
       try {
@@ -310,6 +312,7 @@ export function TicketWizard({
         return;
       }
       setSavedTicketId(result.ticketId);
+      setEmailWarning(result.emailError ?? null);
       setSubmitted(true);
     });
   }
@@ -346,6 +349,11 @@ export function TicketWizard({
                 customer care.
               </p>
             </div>
+            {emailWarning && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-4 py-3 max-w-md" role="status">
+                The ticket was created, but the customer notification email could not be sent: {emailWarning}
+              </p>
+            )}
             <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
               <Link
                 href={mode === "edit" ? `/employee/tickets/${savedTicketId}` : "/employee/tickets"}
@@ -364,6 +372,7 @@ export function TicketWizard({
                     setConfirmed(false);
                     setShowErrors([false, false, false, false]);
                     setSubmitError(null);
+                    setEmailWarning(null);
                     setSavedTicketId(ticketId);
                     setSubmitted(false);
                   }}
