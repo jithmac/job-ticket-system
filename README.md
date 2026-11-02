@@ -14,7 +14,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open the deployed application URL in your browser.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
@@ -41,7 +41,8 @@ details, customer details, job tickets, ticket crew, subtasks, attachments,
 activity, priority requests, billing, and the opaque customer-facing token for
 each job.
 
-1. Copy `.env.example` to `.env` and set `DATABASE_URL`.
+1. Copy `.env.example` to `.env`, set `DATABASE_URL`, and set
+   `NEXT_PUBLIC_APP_URL` to the deployed application's public HTTPS URL.
 2. Set `RESEND_API_KEY` to your Resend API key. The default sender is
    `onboarding@resend.dev`; set `RESEND_FROM_EMAIL` when using a verified
    sender domain.

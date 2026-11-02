@@ -5,6 +5,7 @@ export function createPublicJobToken() {
 }
 
 export function publicJobUrl(publicToken: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!baseUrl) throw new Error("NEXT_PUBLIC_APP_URL is not configured.");
   return new URL(`/customer/jobs/${publicToken}`, baseUrl).toString();
 }
