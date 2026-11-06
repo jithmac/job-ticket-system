@@ -33,6 +33,9 @@ export async function POST(request: Request) {
       department: user.department,
       createdAt: user.createdAt.toISOString(),
     });
+    if (workspace === "employee") {
+      console.log("Employee login successful", { employeeId: user.id, email: user.email });
+    }
     const destinations = { admin: "/admin", employee: "/employee", "customer-care": "/customer-care" };
     return NextResponse.json({ destination: destinations[workspace as keyof typeof destinations] ?? "/employee" });
   } catch (error) {
