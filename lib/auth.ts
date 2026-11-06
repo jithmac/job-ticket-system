@@ -120,7 +120,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 export async function requireRole(roles: UserRole[]) {
   const session = await getSignedSession();
   if (!session) redirect("/login");
-  if(!session) console.log("Session is null in requireRole");
+  if(session) console.log("Session is valid:", session);
   
   const user = await db.user.findUnique({
     where: { id: session.id },
