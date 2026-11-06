@@ -118,7 +118,9 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 });
 
 export async function requireRole(roles: UserRole[]) {
+  console.log("Require role called!!!");
   const session = await getSignedSession();
+  console.log("Session:", session);
   if (!session) console.log("No session found, redirecting to login.");
   if (!session) redirect("/login");
   
